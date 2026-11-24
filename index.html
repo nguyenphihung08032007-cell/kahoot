@@ -1,0 +1,3536 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kahoot! Việt Nam - Chuyên Đề Vectơ Toán 10 (50 Câu)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Montserrat & Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+    <!-- KaTeX for Math Rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <!-- QRCode.js for Instant Room QR Generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- MQTT over WebSocket for Cross-Network Real-Time Sync (PC <-> 4G/Wi-Fi Phones) -->
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f2f2f2;
+            user-select: none;
+            overflow-x: hidden;
+        }
+        .font-kahoot {
+            font-family: 'Montserrat', sans-serif;
+        }
+        /* Kahoot 3D tactile buttons */
+        .kahoot-btn {
+            transition: transform 0.08s ease, box-shadow 0.08s ease, filter 0.15s ease;
+        }
+        .kahoot-btn:active:not(:disabled) {
+            transform: translateY(4px);
+            box-shadow: none !important;
+        }
+        .btn-red {
+            background-color: #e21b3c;
+            box-shadow: 0 6px 0 #9e1128;
+        }
+        .btn-red:hover:not(:disabled) { background-color: #eb2445; }
+
+        .btn-blue {
+            background-color: #1368ce;
+            box-shadow: 0 6px 0 #0c478f;
+        }
+        .btn-blue:hover:not(:disabled) { background-color: #1974e0; }
+
+        .btn-yellow {
+            background-color: #d89e00;
+            box-shadow: 0 6px 0 #966e00;
+        }
+        .btn-yellow:hover:not(:disabled) { background-color: #e5a800; }
+
+        .btn-green {
+            background-color: #26890c;
+            box-shadow: 0 6px 0 #195c07;
+        }
+        .btn-green:hover:not(:disabled) { background-color: #2c9c0e; }
+
+        .btn-purple {
+            background-color: #46178f;
+            box-shadow: 0 6px 0 #2b0d59;
+        }
+        .btn-purple:hover:not(:disabled) { background-color: #531ca8; }
+
+        /* Animated geometric background */
+        .kahoot-bg {
+            background: radial-gradient(circle at 15% 20%, #5b1fa6 0%, #381272 55%, #250b4d 100%);
+            position: relative;
+        }
+        .bg-shape {
+            position: absolute;
+            opacity: 0.07;
+            pointer-events: none;
+            animation: floatSlow 14s infinite ease-in-out alternate;
+        }
+        @keyframes floatSlow {
+            0% { transform: translateY(0px) rotate(0deg); }
+            100% { transform: translateY(-25px) rotate(12deg); }
+        }
+
+        /* Pulse animation for timer */
+        @keyframes urgentPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.12); }
+        }
+        .timer-urgent {
+            animation: urgentPulse 0.6s infinite;
+            background-color: #e21b3c !important;
+        }
+
+        /* KaTeX overrides for dark buttons */
+        .option-btn .katex {
+            font-size: 1.15em;
+        }
+        @media (max-width: 640px) {
+            .option-btn .katex {
+                font-size: 1.02em;
+            }
+        }
+        /* QR Container styling with mandatory white quiet zone */
+        #hostQrContainer {
+            background: #ffffff;
+            padding: 16px;
+            border-radius: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+        }
+        #hostQrContainer img, #hostQrContainer canvas {
+            margin: 0 auto;
+            display: block;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col text-slate-800">
+
+    <!-- Toast Notification Box (No alert/confirm) -->
+    <div id="toastBox" class="hidden fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl border border-white/15 font-semibold text-sm flex items-center gap-2.5 transition-all">
+        <span id="toastIcon">ℹ️</span>
+        <span id="toastMessage">Thông báo</span>
+    </div>
+
+    <!-- ==================== HEADER BAR ==================== -->
+    <header id="appHeader" class="bg-white shadow-sm border-b border-slate-200 px-4 py-2.5 flex items-center justify-between sticky top-0 z-40">
+        <div class="flex items-center gap-3">
+            <button onclick="confirmReturnHome()" class="flex items-center gap-2 group focus:outline-none">
+                <div class="bg-[#46178f] text-white font-kahoot font-black text-xl px-3 py-1 rounded-lg tracking-tight shadow-sm group-hover:bg-[#571eb0] transition">
+                    Kahoot!
+                </div>
+                <span class="hidden sm:inline-block font-bold text-slate-700 text-sm bg-purple-100 text-purple-800 px-2.5 py-1 rounded-full">
+                    Toán 10 • Chuyên đề Vectơ
+                </span>
+            </button>
+            <span id="roleHeaderBadge" class="hidden text-xs font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-lg bg-amber-100 text-amber-800">
+                HOST
+            </span>
+        </div>
+
+        <div id="headerStats" class="hidden flex items-center gap-2 sm:gap-4">
+            <!-- Streak badge -->
+            <div id="streakBadge" class="hidden items-center gap-1 bg-orange-100 text-orange-700 font-bold px-2.5 py-1 rounded-full text-xs sm:text-sm">
+                <span>🔥</span>
+                <span id="streakCount">0</span>
+            </div>
+            <!-- Score display -->
+            <div class="bg-slate-900 text-white font-kahoot font-bold px-3.5 py-1.5 rounded-lg text-sm sm:text-base flex items-center gap-1.5">
+                <span class="text-yellow-400 text-xs uppercase tracking-wider">Điểm:</span>
+                <span id="headerScore">0</span>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <button type="button" onclick="openPublishModal()" title="Tải file HTML & Xuất bản ra link web"
+                class="hidden sm:inline-flex items-center gap-1.5 text-xs font-extrabold px-3 py-1.5 rounded-xl bg-purple-100 hover:bg-purple-200 text-purple-900 transition">
+                <span>🌐</span> <span>Xuất bản Link</span>
+            </button>
+            <div id="connectionStatusPill" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-bold">
+                <span id="connectionStatusDot" class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                <span id="connectionStatusText">Đang kết nối...</span>
+            </div>
+            <button id="soundToggleBtn" onclick="toggleSound()" title="Bật/Tắt âm thanh" class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition">
+                <svg id="soundOnIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+                </svg>
+                <svg id="soundOffIcon" class="w-5 h-5 hidden text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15zM17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/>
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- ==================== SCREEN 1: HOME / ROLE SELECTION ==================== -->
+    <main id="lobbyScreen" class="flex-1 kahoot-bg text-white flex items-center justify-center p-4 sm:p-6 overflow-hidden">
+        <!-- Decorative Background Shapes -->
+        <div class="bg-shape w-64 h-64 rounded-full bg-white -top-12 -left-12"></div>
+        <div class="bg-shape w-72 h-72 rotate-45 bg-white bottom-10 -right-16" style="animation-delay: -4s;"></div>
+        <div class="bg-shape w-40 h-40 rounded-2xl bg-white top-1/3 right-1/4" style="animation-delay: -7s;"></div>
+
+        <div class="max-w-4xl w-full bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-5 sm:p-8 shadow-2xl relative z-10">
+            <div class="text-center mb-6">
+                <div class="inline-flex items-center gap-2 bg-yellow-400 text-slate-900 font-kahoot font-extrabold text-xs sm:text-sm px-4 py-1.5 rounded-full uppercase tracking-wider mb-2.5 shadow">
+                    <span>📐 Toán Học 10 • Cánh Diều &amp; Kết Nối Tri Thức</span>
+                </div>
+                <h1 class="font-kahoot font-black text-3xl sm:text-5xl tracking-tight leading-tight mb-2">
+                    CHUYÊN ĐỀ VECTƠ
+                </h1>
+                <p class="text-purple-100 text-sm sm:text-base max-w-2xl mx-auto">
+                    Trọn bộ <strong>50 câu hỏi</strong> phân hóa 4 mức độ &amp; 4 định dạng tương tác chuẩn Kahoot. Tạo phòng quét mã QR thi đấu trực tiếp hoặc tự luyện tập!
+                </p>
+            </div>
+
+            <!-- 3 Role Tabs -->
+            <div class="grid grid-cols-3 gap-2 sm:gap-3 bg-black/25 p-1.5 rounded-2xl mb-6">
+                <button type="button" onclick="switchRoleTab('host')" id="tabRoleHost"
+                    class="role-tab py-3 px-2 sm:px-4 rounded-xl font-kahoot font-extrabold text-xs sm:text-sm md:text-base bg-yellow-400 text-slate-900 shadow transition flex items-center justify-center gap-1.5">
+                    <span>🖥️</span> <span>Tạo Phòng (GV)</span>
+                </button>
+                <button type="button" onclick="switchRoleTab('player')" id="tabRolePlayer"
+                    class="role-tab py-3 px-2 sm:px-4 rounded-xl font-kahoot font-extrabold text-xs sm:text-sm md:text-base text-white/80 hover:text-white transition flex items-center justify-center gap-1.5">
+                    <span>📱</span> <span>Vào Phòng (HS)</span>
+                </button>
+                <button type="button" onclick="switchRoleTab('solo')" id="tabRoleSolo"
+                    class="role-tab py-3 px-2 sm:px-4 rounded-xl font-kahoot font-extrabold text-xs sm:text-sm md:text-base text-white/80 hover:text-white transition flex items-center justify-center gap-1.5">
+                    <span>🎯</span> <span>Tự Luyện</span>
+                </button>
+            </div>
+
+            <!-- PANEL A: HOST SETUP -->
+            <div id="panelHost" class="space-y-5">
+                <div class="bg-white/10 border border-white/15 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div>
+                        <div class="font-kahoot font-extrabold text-base sm:text-lg text-yellow-300">Chế độ Người điều khiển (Host)</div>
+                        <p class="text-xs sm:text-sm text-purple-100">Tạo phòng trực tuyến, chiếu mã QR để 2 hoặc nhiều học sinh dùng điện thoại quét tham gia.</p>
+                    </div>
+                    <span class="bg-emerald-500/30 border border-emerald-400/40 text-emerald-200 text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap">
+                        Đồng bộ Real-time ⚡
+                    </span>
+                </div>
+
+                <!-- Shared Deck Selector -->
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold uppercase tracking-wider text-purple-200">Chọn bộ câu hỏi cho phòng thi</span>
+                        <span id="hostModeInfo" class="text-xs font-semibold text-yellow-300">50 câu • Thời gian linh hoạt 15s – 95s</span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5" id="hostModeSelector">
+                        <button type="button" onclick="selectMode('all')" data-mode="all"
+                            class="mode-card text-left p-3.5 rounded-2xl border-2 border-yellow-400 bg-white/20 shadow-lg transition flex flex-col justify-between">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="font-kahoot font-extrabold text-sm sm:text-base">🏆 Toàn bộ 50 câu</span>
+                                <span class="text-xs bg-yellow-400 text-slate-900 font-bold px-2 py-0.5 rounded-full">Đầy đủ</span>
+                            </div>
+                            <span class="text-xs text-purple-100">Câu 1 – 50 (4 mức độ nhận thức)</span>
+                        </button>
+
+                        <button type="button" onclick="selectMode('nb')" data-mode="nb"
+                            class="mode-card text-left p-3.5 rounded-2xl border-2 border-white/15 bg-white/5 hover:bg-white/15 transition flex flex-col justify-between">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="font-kahoot font-extrabold text-sm sm:text-base">🟢 Nhận biết (10 câu)</span>
+                                <span class="text-xs bg-emerald-500/30 text-emerald-200 font-bold px-2 py-0.5 rounded-full">15s–35s</span>
+                            </div>
+                            <span class="text-xs text-purple-200">Câu 1 – 10 • Khái niệm &amp; quy tắc</span>
+                        </button>
+
+                        <button type="button" onclick="selectMode('th')" data-mode="th"
+                            class="mode-card text-left p-3.5 rounded-2xl border-2 border-white/15 bg-white/5 hover:bg-white/15 transition flex flex-col justify-between">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="font-kahoot font-extrabold text-sm sm:text-base">🔵 Thông hiểu (13 câu)</span>
+                                <span class="text-xs bg-sky-500/30 text-sky-200 font-bold px-2 py-0.5 rounded-full">20s–45s</span>
+                            </div>
+                            <span class="text-xs text-purple-200">Câu 11 – 23 • Góc, tọa độ, độ dài</span>
+                        </button>
+
+                        <button type="button" onclick="selectMode('vd')" data-mode="vd"
+                            class="mode-card text-left p-3.5 rounded-2xl border-2 border-white/15 bg-white/5 hover:bg-white/15 transition flex flex-col justify-between">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="font-kahoot font-extrabold text-sm sm:text-base">🟠 Vận dụng (12 câu)</span>
+                                <span class="text-xs bg-amber-500/30 text-amber-200 font-bold px-2 py-0.5 rounded-full">45s–65s</span>
+                            </div>
+                            <span class="text-xs text-purple-200">Câu 24 – 35 • Hợp lực &amp; phân tích</span>
+                        </button>
+
+                        <button type="button" onclick="selectMode('vdc')" data-mode="vdc"
+                            class="mode-card text-left p-3.5 rounded-2xl border-2 border-white/15 bg-white/5 hover:bg-white/15 transition flex flex-col justify-between sm:col-span-2 lg:col-span-2">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="font-kahoot font-extrabold text-sm sm:text-base">🔴 Vận dụng cao (15 câu)</span>
+                                <span class="text-xs bg-rose-500/30 text-rose-200 font-bold px-2 py-0.5 rounded-full">60s–95s</span>
+                            </div>
+                            <span class="text-xs text-purple-200">Câu 36 – 50 • Tích vô hướng nâng cao, quỹ tích, đường thẳng Euler</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row items-center justify-between gap-4 pt-3 border-t border-white/15">
+                    <label class="flex items-center gap-2.5 cursor-pointer text-sm text-purple-100">
+                        <input id="hostShuffleCheck" type="checkbox" class="w-4 h-4 rounded accent-yellow-400">
+                        <span>Xáo trộn thứ tự câu hỏi</span>
+                    </label>
+                    <button id="createRoomBtn" onclick="createLiveRoom()" class="w-full sm:w-auto kahoot-btn btn-green text-white font-kahoot font-black text-lg px-9 py-4 rounded-2xl uppercase tracking-wide">
+                        Tạo Phòng &amp; Lấy Mã QR 📲
+                    </button>
+                </div>
+            </div>
+
+            <!-- PANEL B: PLAYER JOIN -->
+            <div id="panelPlayer" class="hidden max-w-md mx-auto space-y-4 py-2">
+                <div class="bg-white rounded-3xl p-6 text-slate-900 shadow-xl space-y-4">
+                    <div class="text-center">
+                        <span class="inline-block bg-purple-100 text-purple-800 font-bold text-xs px-3 py-1 rounded-full mb-1">
+                            Dành cho Học sinh
+                        </span>
+                        <h2 class="font-kahoot font-black text-2xl text-slate-900">Tham Gia Phòng Thi</h2>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Mã PIN phòng (6 số)</label>
+                        <input id="joinPinInput" type="text" inputmode="numeric" maxlength="6" placeholder="000000"
+                            class="w-full px-4 py-3.5 rounded-2xl border-2 border-slate-300 focus:border-[#46178f] focus:outline-none font-kahoot font-black text-center text-3xl tracking-[0.25em] text-slate-900">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Tên hiển thị của bạn</label>
+                        <input id="joinNameInput" type="text" maxlength="20" placeholder="Nhập tên (VD: Minh Anh)..."
+                            class="w-full px-4 py-3 rounded-2xl border-2 border-slate-300 focus:border-[#46178f] focus:outline-none font-bold text-center text-lg text-slate-900">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 text-center">Chọn linh vật đại diện</label>
+                        <div id="avatarPicker" class="grid grid-cols-6 gap-2">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+
+                    <button id="joinRoomBtn" onclick="joinLiveRoom()" class="w-full kahoot-btn btn-purple text-white font-kahoot font-black text-lg py-4 rounded-2xl uppercase tracking-wide mt-2">
+                        Vào Sảnh Chờ 🚀
+                    </button>
+                </div>
+            </div>
+
+            <!-- PANEL C: SOLO PRACTICE -->
+            <div id="panelSolo" class="hidden space-y-5">
+                <div class="max-w-md mx-auto">
+                    <label class="block text-xs font-bold uppercase tracking-wider text-purple-200 mb-1.5">Tên hiển thị tự luyện</label>
+                    <input id="playerNameInput" type="text" maxlength="24" placeholder="Nhập biệt danh..." value="Học sinh Toán 10"
+                        class="w-full px-4 py-3 rounded-xl bg-white text-slate-900 font-bold text-center text-lg shadow-inner focus:outline-none focus:ring-4 focus:ring-yellow-400 transition">
+                </div>
+
+                <div class="flex flex-col sm:flex-row items-center justify-between gap-4 pt-3 border-t border-white/15">
+                    <label class="flex items-center gap-2.5 cursor-pointer text-sm text-purple-100">
+                        <input id="shuffleQuestionsCheck" type="checkbox" class="w-4 h-4 rounded accent-yellow-400">
+                        <span>Xáo trộn thứ tự câu hỏi (Bộ đề đang chọn: <strong id="soloSelectedLabel" class="text-yellow-300">Toàn bộ 50 câu</strong>)</span>
+                    </label>
+                    <button onclick="startGame()" class="w-full sm:w-auto kahoot-btn btn-blue text-white font-kahoot font-black text-lg px-9 py-4 rounded-2xl uppercase tracking-wide">
+                        Tự Luyện Ngay 🎯
+                    </button>
+                </div>
+            </div>
+
+            <!-- Quick Publish / Export Standalone HTML Footer Bar -->
+            <div class="mt-6 pt-4 border-t border-white/15 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs sm:text-sm">
+                <div class="text-purple-100 text-center sm:text-left">
+                    💡 Muốn gửi đường link công khai cho học sinh quét QR từ điện thoại?
+                </div>
+                <button type="button" onclick="openPublishModal()"
+                    class="w-full sm:w-auto px-4 py-2 rounded-xl bg-white/15 hover:bg-white/25 border border-white/25 text-yellow-300 font-kahoot font-extrabold transition flex items-center justify-center gap-2">
+                    <span>🚀</span> <span>Xuất bản ra Link Web &amp; Tải HTML</span>
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- ==================== SCREEN 1B: HOST LIVE WAITING LOBBY ==================== -->
+    <section id="hostLobbyScreen" class="hidden flex-1 kahoot-bg text-white p-4 sm:p-6 flex flex-col items-center justify-center">
+        <div class="max-w-5xl w-full grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+            <!-- Left: PIN & QR Code -->
+            <div class="lg:col-span-5 bg-white text-slate-900 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col justify-between text-center">
+                <div class="w-full">
+                    <span class="inline-block bg-purple-100 text-purple-800 font-bold text-xs px-3 py-1 rounded-full uppercase tracking-wider mb-2">
+                        Quét mã QR bằng điện thoại
+                    </span>
+                    <div class="bg-slate-100 rounded-2xl py-2.5 px-4 mb-3 border border-slate-200">
+                        <div class="text-[11px] font-bold uppercase text-slate-500">Mã PIN Phòng</div>
+                        <div id="hostDisplayPin" class="font-kahoot font-black text-4xl sm:text-5xl tracking-widest text-[#46178f]">
+                            ------
+                        </div>
+                    </div>
+
+                    <!-- QR Code Box with White Quiet Zone -->
+                    <div class="bg-slate-100 p-3 rounded-2xl border border-slate-200 mb-3 inline-block">
+                        <div id="hostQrContainer"></div>
+                    </div>
+
+                    <!-- Warning Banner if running inside about:srcdoc / file:// -->
+                    <div id="qrPreviewWarningBox" class="hidden text-left bg-amber-50 border border-amber-300 rounded-xl p-2.5 mb-2.5 text-[11px] text-amber-900 leading-snug">
+                        <strong>⚠️ Đang chạy ở chế độ xem trước/nội bộ:</strong> Điện thoại không thể mở trực tiếp link nội bộ này. Hãy bấm <button type="button" onclick="openPublishModal()" class="underline font-extrabold text-purple-800">Xuất bản ra Link (30 giây)</button> rồi dán đường link công khai vào ô dưới để mã QR hoạt động trên mọi điện thoại!
+                    </div>
+
+                    <!-- Editable Public URL Input for Dynamic QR Update -->
+                    <div class="text-left mb-2">
+                        <label for="hostPublicUrlInput" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                            Đường dẫn trang web công khai (URL):
+                        </label>
+                        <input id="hostPublicUrlInput" type="url" oninput="handleHostUrlChange()"
+                            placeholder="https://ten-web-cua-ban.netlify.app"
+                            class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:border-[#46178f] focus:outline-none text-xs font-semibold text-slate-800 bg-slate-50">
+                    </div>
+                </div>
+
+                <div class="w-full pt-3 mt-2 border-t border-slate-200 flex gap-2">
+                    <button onclick="copyInviteLink()" class="flex-1 py-2.5 px-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs sm:text-sm transition flex items-center justify-center gap-1.5 shadow-sm">
+                        <span>📋</span> Sao chép link tham gia
+                    </button>
+                    <button onclick="confirmReturnHome()" class="py-2.5 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs sm:text-sm transition">
+                        Hủy phòng
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right: Connected Players & Start Button -->
+            <div class="lg:col-span-7 bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-6 sm:p-8 flex flex-col justify-between shadow-2xl">
+                <div>
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-4 pb-4 border-b border-white/15">
+                        <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Mã PIN phòng (6 số)</label>
+                        <input id="joinPinInput" type="text" inputmode="numeric" maxlength="6" placeholder="000000"
+                            oninput="onPlayerPinInputChange()"
+                            class="w-full px-4 py-3.5 rounded-2xl border-2 border-slate-300 focus:border-[#46178f] focus:outline-none font-kahoot font-black text-center text-3xl tracking-[0.25em] text-slate-900">
+                        <div id="joinRoomPreviewBadge" class="hidden mt-1.5 text-center text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl py-1.5 px-3">
+                            ✓ Đã tìm thấy phòng!
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Tên hiển thị của bạn</label>
+            <!-- Right: Connected Players & Start Button -->
+            <div class="lg:col-span-7 bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-6 sm:p-8 flex flex-col justify-between shadow-2xl">
+                <div>
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-4 pb-4 border-b border-white/15">
+                        <div>
+                            <h3 class="font-kahoot font-black text-xl sm:text-2xl text-white">Sảnh Chờ Học Sinh</h3>
+                            <p id="hostLobbyDeckSummary" class="text-xs sm:text-sm text-purple-200">Bộ đề: 50 câu hỏi chuyên đề Vectơ</p>
+                        </div>
+                        <span id="hostPlayerCountBadge" class="bg-yellow-400 text-slate-900 font-kahoot font-black text-sm px-4 py-1.5 rounded-full shadow">
+                            0 học sinh
+                        </span>
+                    </div>
+
+                    <div id="hostPlayersGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-3 min-h-[190px] content-start">
+                        <div class="col-span-full flex flex-col items-center justify-center py-10 text-purple-200 border-2 border-dashed border-white/20 rounded-2xl">
+                            <div class="text-4xl mb-2 animate-bounce">📱</div>
+                            <p class="font-bold text-base">Đang chờ học sinh quét mã QR vào phòng...</p>
+                            <p class="text-xs text-purple-300 mt-1">Hỗ trợ 2 học sinh thi đấu đối kháng hoặc cả lớp cùng chơi</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-5 mt-5 border-t border-white/15 flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div class="text-xs text-purple-200">
+                        💡 Khi đủ học sinh (VD: 2/2 học sinh), bấm nút bên cạnh để bắt đầu.
+                    </div>
+                    <button id="hostStartMatchBtn" onclick="hostStartLiveMatch()" disabled
+                        class="w-full sm:w-auto kahoot-btn btn-green disabled:opacity-45 disabled:cursor-not-allowed text-white font-kahoot font-black text-lg px-8 py-4 rounded-2xl uppercase tracking-wide">
+                        Bắt Đầu Trò Chơi 🚀
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== SCREEN 1C: PLAYER WAITING ROOM ==================== -->
+    <section id="playerWaitingScreen" class="hidden flex-1 kahoot-bg text-white p-4 flex items-center justify-center">
+        <div class="max-w-md w-full bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-8 text-center shadow-2xl space-y-5">
+            <div id="playerWaitingAvatar" class="w-24 h-24 rounded-3xl bg-yellow-400 text-slate-900 text-5xl flex items-center justify-center mx-auto shadow-lg animate-bounce">
+                🦊
+            </div>
+            <div>
+                <span class="inline-block bg-emerald-500/30 border border-emerald-400/40 text-emerald-200 text-xs font-bold px-3 py-1 rounded-full mb-2">
+                    ✓ Đã kết nối phòng #<span id="playerWaitingPin">000000</span>
+                </span>
+                <h2 id="playerWaitingName" class="font-kahoot font-black text-3xl">Học sinh</h2>
+            </div>
+            <div class="bg-black/25 rounded-2xl p-4 text-purple-100 text-sm leading-relaxed">
+                Bạn đã vào phòng thành công! Hãy nhìn lên màn hình chính của giáo viên và sẵn sàng bấm đáp án trên điện thoại của bạn.
+            </div>
+            <div class="text-xs text-purple-200 font-semibold" id="playerWaitingPeersCount">
+                Đang chờ người điều khiển bắt đầu...
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== SCREEN 2: ACTIVE GAMEPLAY (SOLO / HOST / PLAYER) ==================== -->
+    <section id="gameScreen" class="hidden flex-1 flex flex-col max-w-6xl w-full mx-auto p-3 sm:p-6">
+        <!-- Top Status Bar -->
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3 sm:mb-4">
+            <div class="flex items-center gap-2">
+                <span id="questionProgressBadge" class="bg-white border border-slate-200 shadow-sm font-kahoot font-extrabold text-slate-800 px-3.5 py-1.5 rounded-xl text-sm">
+                    Câu 1 / 50
+                </span>
+                <span id="levelBadge" class="px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wide bg-emerald-100 text-emerald-800">
+                    Nhận biết
+                </span>
+                <span id="typeBadge" class="hidden md:inline-block px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-200 text-slate-700">
+                    Trắc nghiệm
+                </span>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <!-- Host live answer counter -->
+                <span id="hostAnsweredCounter" class="hidden bg-purple-700 text-white font-kahoot font-extrabold px-3.5 py-1.5 rounded-xl text-xs sm:text-sm shadow-sm">
+                    Đã trả lời: 0 / 2
+                </span>
+                <span id="sourceBadge" class="hidden sm:inline-block text-xs text-slate-500 font-medium bg-white px-3 py-1.5 rounded-xl border border-slate-200">
+                    Nguồn: Cánh Diều
+                </span>
+                <button id="skipOrRevealBtn" onclick="skipToAnswer()" class="text-xs font-bold text-slate-500 hover:text-slate-800 bg-white hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-xl transition">
+                    Nộp / Bỏ qua ⏭
+                </button>
+            </div>
+        </div>
+
+        <!-- Timer Progress Line -->
+        <div class="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden mb-4 shadow-inner">
+            <div id="timeProgressBar" class="h-full bg-[#46178f] transition-all duration-300 ease-linear" style="width: 100%;"></div>
+        </div>
+
+        <!-- Question Card & Timer Circle -->
+        <div id="questionCardBox" class="bg-white rounded-3xl shadow-md border border-slate-200 p-5 sm:p-8 mb-4 sm:mb-6 relative flex flex-col sm:flex-row items-center gap-5">
+            <!-- Countdown Circle -->
+            <div class="flex-shrink-0 flex flex-col items-center">
+                <div id="timerCircle" class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-[#46178f] text-white font-kahoot font-black text-2xl sm:text-3xl flex items-center justify-center shadow-lg transition-colors">
+                    20
+                </div>
+                <span id="timeReasonTag" class="text-[11px] font-semibold text-slate-400 mt-1.5 text-center max-w-[90px] leading-tight">
+                    Chuẩn 20s
+                </span>
+            </div>
+
+            <!-- Question Prompt -->
+            <div class="flex-1 text-center sm:text-left">
+                <div class="text-xs font-bold uppercase tracking-wider text-purple-700 mb-1" id="originalNumberLabel">
+                    Câu số 1
+                </div>
+                <div id="questionText" class="text-lg sm:text-2xl font-bold text-slate-900 leading-relaxed">
+                    Nội dung câu hỏi đang tải...
+                </div>
+            </div>
+        </div>
+
+        <!-- Host Live Student Status & Real-Time Peek Panel (Host Only) -->
+        <div id="hostLiveTrackingPanel" class="hidden bg-white rounded-3xl shadow-sm border border-purple-200 p-4 sm:p-5 mb-4 sm:mb-5">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2.5 border-b border-slate-100">
+                <div class="flex items-center gap-2">
+                    <span class="text-base">👥</span>
+                    <span class="font-kahoot font-extrabold text-sm sm:text-base text-slate-800">Trạng thái làm bài của học sinh</span>
+                </div>
+                <button type="button" id="toggleLivePeekBtn" onclick="toggleHostLivePeek()"
+                    class="px-3.5 py-1.5 rounded-xl text-xs font-extrabold border transition flex items-center gap-1.5 bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200">
+                    <span>👁️</span>
+                    <span id="toggleLivePeekText">Xem trực tiếp đáp án học sinh chọn: TẮT</span>
+                </button>
+            </div>
+            <div id="hostLiveStudentStatusGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                <!-- Populated dynamically during live question -->
+            </div>
+        </div>
+
+        <!-- Dynamic Answer Area (4 Formats or Waiting Screen for Player) -->
+        <div id="answerArea" class="flex-1 flex flex-col justify-center">
+            <!-- Populated dynamically by JS -->
+        </div>
+    </section>
+
+    <!-- ==================== SCREEN 3: QUESTION FEEDBACK & EXPLANATION MODAL ==================== -->
+    <div id="feedbackOverlay" class="hidden fixed inset-0 bg-slate-900/75 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-3xl max-w-3xl w-full overflow-hidden shadow-2xl transform transition-all my-auto">
+            <!-- Top Result Banner -->
+            <div id="feedbackBanner" class="p-5 sm:p-6 text-center text-white bg-[#26890c]">
+                <div id="feedbackIcon" class="text-4xl mb-1">🎉</div>
+                <h2 id="feedbackTitle" class="font-kahoot font-black text-2xl sm:text-3xl uppercase tracking-wide">
+                    Chính xác!
+                </h2>
+                <p id="feedbackPoints" class="font-bold text-white/90 text-sm sm:text-base mt-1">
+                    +950 điểm (Tốc độ thưởng: +150)
+                </p>
+            </div>
+
+            <!-- Answer & Explanation Body -->
+            <div class="p-5 sm:p-6 space-y-4">
+                <!-- Host Answer Distribution Bar Chart -->
+                <div id="hostAnswerChartBox" class="hidden bg-slate-50 border border-slate-200 rounded-2xl p-4">
+                    <div class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 flex items-center justify-between">
+                        <span>📊 Biểu đồ phân phối phương án học sinh chọn</span>
+                        <span id="hostChartTotalLabel" class="text-purple-700"></span>
+                    </div>
+                    <div id="hostAnswerChartBars" class="space-y-2"></div>
+                </div>
+
+                <!-- Host Detailed Student Choices & Live Leaderboard -->
+                <div id="liveRoundLeaderboardBox" class="hidden bg-amber-50/70 border border-amber-200 rounded-2xl p-4">
+                    <div class="text-xs font-bold uppercase tracking-wider text-amber-900 mb-2.5 flex items-center justify-between">
+                        <span>🎯 Chi tiết lựa chọn của từng học sinh &amp; Bảng điểm</span>
+                        <span id="liveStatsSummary" class="text-amber-800"></span>
+                    </div>
+                    <div id="liveRoundLeaderboardList" class="space-y-2 max-h-64 overflow-y-auto pr-1"></div>
+                </div>
+
+                <!-- Player Chosen Answer Comparison Box (Player Mode) -->
+                <div id="playerChosenAnswerBox" class="hidden bg-indigo-50 border border-indigo-200 rounded-2xl p-4">
+                    <div class="text-xs font-bold uppercase tracking-wider text-indigo-700 mb-1">Phương án bạn đã chọn</div>
+                    <div id="playerChosenAnswerDisplay" class="font-bold text-base text-slate-900">
+                        ...
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4">
+                    <div class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Đáp án đúng</div>
+                    <div id="correctAnswerDisplay" class="font-bold text-base sm:text-lg text-emerald-700">
+                        ...
+                    </div>
+                </div>
+
+                <div class="bg-purple-50 border border-purple-100 rounded-2xl p-4">
+                    <div class="text-xs font-bold uppercase tracking-wider text-purple-700 mb-1 flex items-center gap-1.5">
+                        <span>💡</span> Lời giải &amp; Hướng dẫn chi tiết
+                    </div>
+                    <div id="explanationDisplay" class="text-sm sm:text-base text-slate-700 leading-relaxed">
+                        ...
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between pt-2">
+                    <div id="modalScoreFooter" class="text-xs text-slate-500">
+                        Tổng điểm hiện tại: <strong id="modalTotalScore" class="text-slate-900 text-sm">0</strong>
+                    </div>
+                    <button id="nextQuestionBtn" onclick="nextQuestion()" class="kahoot-btn btn-blue text-white font-kahoot font-extrabold px-7 py-3 rounded-xl text-base">
+                        Câu tiếp theo ➔
+                    </button>
+                    <div id="playerWaitNextHint" class="hidden text-xs sm:text-sm font-bold text-purple-700 animate-pulse">
+                        ⏳ Đang chờ giáo viên chuyển câu...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== SCREEN 4: PODIUM & SUMMARY LEADERBOARD ==================== -->
+    <section id="resultScreen" class="hidden flex-1 kahoot-bg text-white p-4 sm:p-8 flex flex-col items-center">
+        <div class="max-w-4xl w-full bg-white text-slate-900 rounded-3xl shadow-2xl overflow-hidden my-auto">
+            <!-- Header -->
+            <div class="bg-gradient-to-r from-[#46178f] to-[#6a28d4] text-white p-6 sm:p-8 text-center">
+                <span class="inline-block bg-yellow-400 text-slate-900 font-kahoot font-black text-xs px-3 py-1 rounded-full uppercase tracking-wider mb-2">
+                    Tổng kết chặng đua
+                </span>
+                <h2 class="font-kahoot font-black text-3xl sm:text-4xl mb-1" id="resultPlayerName">Học sinh Toán 10</h2>
+                <p class="text-purple-200 text-sm" id="resultSubtitle">Hoàn thành chuyên đề Vectơ Toán 10</p>
+
+                <!-- 4 Key Metrics -->
+                <div id="resultMetricsGrid" class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
+                    <div class="bg-white/15 backdrop-blur-sm rounded-2xl p-3">
+                        <div class="text-xs text-purple-200 uppercase font-bold">Tổng điểm</div>
+                        <div id="finalScore" class="font-kahoot font-black text-2xl sm:text-3xl text-yellow-300 mt-0.5">0</div>
+                    </div>
+                    <div class="bg-white/15 backdrop-blur-sm rounded-2xl p-3">
+                        <div class="text-xs text-purple-200 uppercase font-bold">Số câu đúng</div>
+                        <div id="finalAccuracy" class="font-kahoot font-black text-2xl sm:text-3xl text-emerald-300 mt-0.5">0/50</div>
+                    </div>
+                    <div class="bg-white/15 backdrop-blur-sm rounded-2xl p-3">
+                        <div class="text-xs text-purple-200 uppercase font-bold">Chuỗi đúng dài nhất</div>
+                        <div id="finalMaxStreak" class="font-kahoot font-black text-2xl sm:text-3xl text-orange-300 mt-0.5">0 🔥</div>
+                    </div>
+                    <div class="bg-white/15 backdrop-blur-sm rounded-2xl p-3">
+                        <div class="text-xs text-purple-200 uppercase font-bold">Xếp hạng</div>
+                        <div id="finalRank" class="font-kahoot font-black text-2xl sm:text-3xl text-sky-300 mt-0.5">#1</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Podium / Leaderboard -->
+            <div class="p-6 sm:p-8">
+                <h3 class="font-kahoot font-extrabold text-lg text-slate-800 mb-3 flex items-center gap-2">
+                    <span>🏆</span> Bục vinh quang &amp; Bảng xếp hạng chung cuộc
+                </h3>
+                <!-- Visual Top 3 Podium (Shown in Live Multiplayer) -->
+                <div id="topThreePodium" class="hidden grid grid-cols-3 gap-2 sm:gap-4 items-end max-w-xl mx-auto mb-6 pt-4"></div>
+
+                <!-- Host Full Report & Matrix Action Buttons -->
+                <div id="hostResultReportActions" class="hidden flex flex-col sm:flex-row items-center justify-center gap-3 mb-5 p-4 rounded-2xl bg-purple-50 border border-purple-200">
+                    <button type="button" onclick="openFullMatrixModal()"
+                        class="w-full sm:w-auto kahoot-btn btn-purple text-white font-kahoot font-extrabold px-5 py-3 rounded-xl text-sm flex items-center justify-center gap-2">
+                        <span>📋</span> <span>Bảng Đối Chiếu Toàn Bộ Câu Hỏi &amp; Đáp Án Từng Học Sinh</span>
+                    </button>
+                    <button type="button" onclick="exportMatchReportCsv()"
+                        class="w-full sm:w-auto kahoot-btn btn-green text-white font-kahoot font-extrabold px-5 py-3 rounded-xl text-sm flex items-center justify-center gap-2">
+                        <span>📥</span> <span>Xuất Báo Cáo CSV</span>
+                    </button>
+                </div>
+
+                <div id="leaderboardList" class="space-y-2 mb-7">
+                    <!-- Populated dynamically -->
+                </div>
+
+                <!-- Review History Accordion -->
+                <div id="reviewSectionWrapper">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-kahoot font-extrabold text-lg text-slate-800 flex items-center gap-2">
+                            <span>📋</span> Chi tiết bài làm &amp; thời gian từng câu
+                        </h3>
+                        <div class="flex gap-1.5 text-xs">
+                            <button onclick="filterReview('all')" class="px-2.5 py-1 rounded-lg bg-slate-200 font-bold text-slate-700 hover:bg-slate-300">Tất cả</button>
+                            <button onclick="filterReview('wrong')" class="px-2.5 py-1 rounded-lg bg-rose-100 font-bold text-rose-700 hover:bg-rose-200">Câu sai</button>
+                        </div>
+                    </div>
+                    <div id="reviewList" class="max-h-80 overflow-y-auto space-y-2.5 pr-1 border border-slate-200 rounded-2xl p-3 bg-slate-50">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex flex-col sm:flex-row gap-3 justify-center mt-7">
+                    <button onclick="returnHome()" class="kahoot-btn btn-purple text-white font-kahoot font-extrabold px-8 py-3.5 rounded-2xl text-base">
+                        🏠 Về màn hình chính
+                    </button>
+                    <button id="replaySoloBtn" onclick="startGame()" class="kahoot-btn btn-green text-white font-kahoot font-extrabold px-8 py-3.5 rounded-2xl text-base">
+                        🔄 Chơi lại lượt này
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Custom Confirm Modal (No window.confirm) -->
+    <div id="confirmModal" class="hidden fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl text-center">
+            <h3 class="font-kahoot font-extrabold text-xl text-slate-900 mb-2">Rời khỏi phòng hiện tại?</h3>
+            <p class="text-sm text-slate-600 mb-5">Bạn sẽ thoát khỏi phiên chơi hiện tại và quay về trang chủ.</p>
+            <div class="flex gap-3 justify-center">
+                <button onclick="closeConfirmModal()" class="px-5 py-2.5 rounded-xl bg-slate-200 hover:bg-slate-300 font-bold text-slate-800 text-sm">Ở lại</button>
+                <button onclick="returnHome()" class="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 font-bold text-white text-sm">Thoát về trang chủ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Publish & Standalone HTML Download Modal -->
+    <div id="publishModal" class="hidden fixed inset-0 bg-slate-900/75 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-3xl max-w-xl w-full overflow-hidden shadow-2xl my-auto text-slate-800">
+            <div class="bg-gradient-to-r from-[#46178f] to-[#6a28d4] text-white p-6 flex items-center justify-between">
+                <div>
+                    <span class="inline-block bg-yellow-400 text-slate-900 font-kahoot font-black text-[11px] px-2.5 py-0.5 rounded-full uppercase tracking-wider mb-1">
+                        Xuất bản miễn phí • 30 giây
+                    </span>
+                    <h3 class="font-kahoot font-black text-xl sm:text-2xl">Đưa Web Lên Link Công Khai</h3>
+                </div>
+                <button type="button" onclick="closePublishModal()" class="w-9 h-9 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center font-bold text-lg">✕</button>
+            </div>
+
+            <div class="p-6 space-y-4 text-sm">
+                <p class="text-slate-600 leading-relaxed">
+                    Ứng dụng đã tích hợp sẵn máy chủ đồng bộ thời gian thực qua Internet (4G/Wi-Fi). Để học sinh dùng điện thoại quét mã QR trực tiếp, bạn chỉ cần xuất bản file HTML thành một đường link công khai theo 3 bước:
+                </p>
+
+                <div class="space-y-2.5">
+                    <div class="flex items-start gap-3 p-3 rounded-2xl bg-purple-50 border border-purple-100">
+                        <span class="w-7 h-7 rounded-full bg-[#46178f] text-white font-kahoot font-black text-xs flex items-center justify-center flex-shrink-0 mt-0.5">1</span>
+                        <div class="flex-1">
+                            <div class="font-bold text-slate-900">Tải file HTML độc lập về máy tính</div>
+                            <p class="text-xs text-slate-600 mb-2">File chứa trọn vẹn 50 câu hỏi Vectơ Toán 10, KaTeX, âm thanh và kết nối đa thiết bị.</p>
+                            <button type="button" onclick="downloadStandaloneHtml()"
+                                class="kahoot-btn btn-green text-white font-kahoot font-extrabold text-xs sm:text-sm px-4 py-2.5 rounded-xl inline-flex items-center gap-2">
+                                <span>⬇️</span> <span>Tải file HTML độc lập (kahoot-toan10-vecto.html)</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-200">
+                        <span class="w-7 h-7 rounded-full bg-slate-800 text-white font-kahoot font-black text-xs flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
+                        <div>
+                            <div class="font-bold text-slate-900">Kéo thả lên Netlify Drop hoặc GitHub Pages</div>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                Mở <a href="https://app.netlify.com/drop" target="_blank" rel="noopener noreferrer" class="text-blue-600 font-bold underline">app.netlify.com/drop</a> (không cần cài đặt), kéo thả file vừa tải vào khung trình duyệt. Sau 5 giây bạn sẽ nhận được đường link dạng <code class="bg-slate-200 px-1.5 py-0.5 rounded text-slate-800">https://ten-ngau-nhien.netlify.app</code>.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-200">
+                        <span class="w-7 h-7 rounded-full bg-slate-800 text-white font-kahoot font-black text-xs flex items-center justify-center flex-shrink-0 mt-0.5">3</span>
+                        <div>
+                            <div class="font-bold text-slate-900">Mở link đó &amp; Tạo phòng quét mã QR</div>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                Khi mở trực tiếp từ link <code class="bg-slate-200 px-1.5 py-0.5 rounded text-slate-800">https://...</code>, mã QR sẽ tự động nhận diện đường dẫn chuẩn để điện thoại học sinh quét và tham gia ngay lập tức!
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-2 flex justify-end">
+                    <button type="button" onclick="closePublishModal()" class="px-6 py-2.5 rounded-xl bg-slate-200 hover:bg-slate-300 font-bold text-slate-800">
+                        Đã hiểu
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Full Cross-Comparison Matrix Modal (Host Post-Game Detailed Audit) -->
+    <div id="fullMatrixModal" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+        <div class="bg-white rounded-3xl max-w-6xl w-full overflow-hidden shadow-2xl my-auto text-slate-800 flex flex-col max-h-[92vh]">
+            <div class="bg-gradient-to-r from-[#46178f] to-[#6a28d4] text-white p-5 sm:p-6 flex flex-wrap items-center justify-between gap-3 flex-shrink-0">
+                <div>
+                    <span class="inline-block bg-yellow-400 text-slate-900 font-kahoot font-black text-[11px] px-2.5 py-0.5 rounded-full uppercase tracking-wider mb-1">
+                        Báo cáo chi tiết từng câu hỏi
+                    </span>
+                    <h3 class="font-kahoot font-black text-xl sm:text-2xl">Bảng Đối Chiếu Lựa Chọn Của Từng Học Sinh</h3>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button type="button" onclick="exportMatchReportCsv()"
+                        class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-kahoot font-extrabold text-xs sm:text-sm flex items-center gap-1.5 shadow">
+                        <span>📥</span> <span>Xuất CSV</span>
+                    </button>
+                    <button type="button" onclick="closeFullMatrixModal()" class="w-9 h-9 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center font-bold text-lg">✕</button>
+                </div>
+            </div>
+
+            <div class="p-4 sm:p-6 overflow-y-auto space-y-5 flex-1">
+                <!-- Per-Student Accuracy Summary Strip -->
+                <div>
+                    <div class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Tổng kết tỷ lệ chính xác từng học sinh</div>
+                    <div id="matrixStudentSummaryCards" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+                </div>
+
+                <!-- Cross-Comparison Table -->
+                <div class="border border-slate-200 rounded-2xl overflow-x-auto shadow-sm">
+                    <table class="w-full text-left border-collapse text-xs sm:text-sm">
+                        <thead id="matrixTableHead" class="bg-slate-100 text-slate-700 font-kahoot font-extrabold border-b border-slate-200">
+                        </thead>
+                        <tbody id="matrixTableBody" class="divide-y divide-slate-200 bg-white">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+// ... existing code ... -->
+            upsertPlayerDoc: async (pin, playerId, playerData) => {
+                if (!mqttPlayersCache[pin]) mqttPlayersCache[pin] = {};
+                const prev = mqttPlayersCache[pin][playerId] || {};
+                const mergedHistory = {
+                    ...(prev.answersHistory || {}),
+                    ...(playerData.answersHistory || {})
+                };
+                const merged = {
+                    ...prev,
+                    ...playerData,
+                    answersHistory: mergedHistory
+                };
+                mqttPlayersCache[pin][playerId] = merged;
+
+                publishSyncPacket(`${TOPIC_PREFIX}/${pin}/player/${playerId}`, merged, true);
+                publishSyncPacket(`${TOPIC_PREFIX}/${pin}/action`, { type: 'player_update', playerId, ts: Date.now() }, false);
+
+                if (firebaseReady && db) {
+                    try {
+                        const pRef = doc(db, 'artifacts', appId, 'public', 'data', `kahoot_players_${pin}`, playerId);
+                        await setDoc(pRef, merged, { merge: true });
+                    } catch (e) { /* MQTT already synced */ }
+                }
+            },
+// ... existing code ... -->
+            {
+                id: 3,
+                level: 'nb',
+                levelName: 'Nhận biết',
+                type: 'quiz',
+                source: 'Cánh Diều - Ví dụ 1',
+                timeLimit: 18,
+                timeNote: '18s • Liệt kê đỉnh',
+                question: 'Cho tứ giác $ABCD$. Có bao nhiêu vectơ khác $\\vec{0}$ có điểm đầu là $A$ và điểm cuối là một trong các đỉnh còn lại của tứ giác?',
+                options: ['$2$', '$3$', '$4$', '$6$'],
+                correctIndex: 1,
+                explanation: 'Có đúng $3$ vectơ thỏa mãn điều kiện đề bài là: $\\vec{AB}, \\vec{AC}, \\vec{AD}$.'
+            },
+            {
+                id: 4,
+                level: 'nb',
+                levelName: 'Nhận biết',
+                type: 'tf',
+                source: 'Kết nối tri thức',
+                timeLimit: 15,
+                timeNote: '15s • Quy tắc ba điểm',
+                question: 'Với ba điểm bất kì $A, B, C$ trong mặt phẳng, ta luôn có đẳng thức $\\vec{AB} + \\vec{BC} = \\vec{AC}$.',
+                correctBool: true,
+                explanation: '<strong>Đúng.</strong> Đây chính là quy tắc ba điểm (quy tắc cộng) đối với phép cộng hai vectơ.'
+            },
+            {
+                id: 5,
+                level: 'nb',
+                levelName: 'Nhận biết',
+                type: 'quiz',
+                source: 'Cánh Diều - Bài 33',
+                timeLimit: 18,
+                timeNote: '18s • Quy tắc hình bình hành',
+                question: 'Cho hình bình hành $ABCD$. Khẳng định nào sau đây là đúng?',
+                options: [
+                    '$\\vec{AB} + \\vec{AD} = \\vec{AC}$',
+                    '$\\vec{AB} + \\vec{AD} = \\vec{BD}$',
+                    '$\\vec{AB} + \\vec{BC} = \\vec{DA}$',
+                    '$\\vec{BA} + \\vec{DA} = \\vec{AC}$'
+                ],
+                correctIndex: 0,
+                explanation: 'Theo quy tắc hình bình hành, với hình bình hành $ABCD$ ta luôn có $\\vec{AB} + \\vec{AD} = \\vec{AC}$.'
+            },
+            {
+                id: 6,
+                level: 'nb',
+                levelName: 'Nhận biết',
+                type: 'quiz',
+                source: 'Kết nối tri thức',
+                timeLimit: 18,
+                timeNote: '18s • Tính chất trung điểm',
+                question: 'Điều kiện cần và đủ để điểm $I$ là trung điểm của đoạn thẳng $AB$ là:',
+// ... existing code ... -->
+            {
+                id: 11,
+                level: 'th',
+                levelName: 'Thông hiểu',
+                type: 'quiz',
+                source: 'KNTT - Bài 4.40',
+                timeLimit: 22,
+                timeNote: '22s • Hình dung vị trí điểm',
+                question: 'Cho đoạn thẳng $AC$ và điểm $B$ nằm giữa hai điểm $A, C$. Khẳng định nào sau đây đúng?',
+                options: [
+                    'Hai vectơ $\\vec{AB}$ và $\\vec{CB}$ cùng hướng.',
+                    'Hai vectơ $\\vec{CA}$ và $\\vec{BC}$ cùng hướng.',
+                    'Hai vectơ $\\vec{AB}$ và $\\vec{AC}$ cùng hướng.',
+                    'Hai vectơ $\\vec{AC}$ và $\\vec{BA}$ cùng hướng.'
+                ],
+                correctIndex: 2,
+                explanation: 'Vì $B$ nằm giữa $A$ và $C$ nên tia $AB$ trùng với tia $AC$, do đó hai vectơ $\\vec{AB}$ và $\\vec{AC}$ cùng hướng.'
+            },
+            {
+                id: 12,
+                level: 'th',
+                levelName: 'Thông hiểu',
+                type: 'number',
+                source: 'KNTT - Bài 4.39',
+                timeLimit: 30,
+                timeNote: '30s • Đếm tổ hợp & nhập số',
+                question: 'Cho hình bình hành $ABCD$ tâm $O$. Xét các vectơ khác $\\vec{0}$ có điểm đầu và điểm cuối lấy từ các điểm $A, B, C, D, O$. Có tất cả bao nhiêu vectơ cùng phương với vectơ $\\vec{AC}$?',
+                correctAnswers: ['6'],
+                explanation: 'Các vectơ khác $\\vec{0}$ nằm trên đường thẳng $AC$ (đi qua 3 điểm $A, O, C$) gồm $3 \\times 2 = 6$ vectơ: $\\vec{AC}, \\vec{CA}, \\vec{AO}, \\vec{OA}, \\vec{OC}, \\vec{CO}$.'
+            },
+            {
+                id: 13,
+                level: 'th',
+                levelName: 'Thông hiểu',
+                type: 'quiz',
+                source: 'Cánh Diều - Ví dụ 10',
+                timeLimit: 25,
+                timeNote: '25s • Quỹ tích điểm cơ bản',
+                question: 'Trong mặt phẳng cho hai điểm phân biệt $A, B$. Tập hợp tất cả các điểm $M$ thỏa mãn $|\\vec{AM}| = |\\vec{BM}|$ là hình gì?',
+                options: [
+                    'Đường tròn tâm $A$ bán kính $AB$.',
+                    'Đường trung trực của đoạn thẳng $AB$.',
+                    'Đường tròn đường kính $AB$.',
+                    'Trung điểm của đoạn thẳng $AB$.'
+                ],
+                correctIndex: 1,
+                explanation: 'Ta có $|\\vec{AM}| = |\\vec{BM}| \\Leftrightarrow AM = BM$, suy ra $M$ cách đều hai đầu mút $A, B$ nên tập hợp điểm $M$ là đường trung trực của $AB$.'
+            },
+            {
+                id: 14,
+                level: 'th',
+                levelName: 'Thông hiểu',
+                type: 'tf',
+                source: 'Cánh Diều - Ví dụ 11',
+                timeLimit: 20,
+                timeNote: '20s • Vật lý & Vectơ',
+                question: 'Treo một vật có khối lượng $10\\text{ kg}$ vào một sợi dây thẳng đứng. Khi vật đứng yên, vectơ trọng lực $\\vec{P}$ và vectơ lực căng dây $\\vec{T}$ là hai vectơ cùng phương, cùng hướng.',
+                correctBool: false,
+                explanation: '<strong>Sai.</strong> Khi vật cân bằng đứng yên, $\\vec{P} + \\vec{T} = \\vec{0}$, hai vectơ này cùng phương thẳng đứng nhưng <strong>ngược hướng</strong> nhau ($\\vec{P}$ hướng xuống, $\\vec{T}$ hướng lên).'
+            },
+            {
+                id: 15,
+                level: 'th',
+                levelName: 'Thông hiểu',
+                type: 'quiz',
+                source: 'KNTT - Bài 4.1',
+                timeLimit: 28,
+                timeNote: '28s • Kiểm tra 4 hệ thức',
+                question: 'Cho tam giác $ABC$, $M$ là trung điểm $BC$ và $G$ là trọng tâm tam giác. Khẳng định nào sau đây là <strong>sai</strong>?',
+// ... existing code ... -->
+            {
+                id: 20,
+                level: 'th',
+                levelName: 'Thông hiểu',
+                type: 'tf',
+                source: 'KNTT - Ví dụ 1',
+                timeLimit: 22,
+                timeNote: '22s • Cẩn thận bẫy góc vectơ',
+                question: 'Cho tam giác đều $ABC$ cạnh $a$. Góc giữa hai vectơ $\\vec{AB}$ và $\\vec{BC}$ bằng $60^\\circ$.',
+// ... existing code ... -->
+            {
+                id: 39,
+                level: 'vdc',
+                levelName: 'Vận dụng cao',
+                type: 'quiz',
+                source: 'KNTT - Bài 4.28',
+                timeLimit: 85,
+                timeNote: '85s • Tọa độ hóa bài toán thực tế',
+                question: 'Để kéo đường dây điện băng qua một hồ hình chữ nhật $ABCD$ có $AB = 200\\text{ m}$, $AD = 180\\text{ m}$, người ta dựng 4 cột điện liên tiếp cách đều nhau trên một đoạn thẳng. Cột thứ nhất nằm trên bờ $AB$ cách $A$ một khoảng $20\\text{ m}$, cột thứ tư nằm trên bờ $CD$ cách $C$ một khoảng $30\\text{ m}$. Khoảng cách từ cột thứ hai đến bờ $AD$ là bao nhiêu mét?',
+                options: ['$50\\text{ m}$', '$70\\text{ m}$', '$120\\text{ m}$', '$60\\text{ m}$'],
+                correctIndex: 1,
+                explanation: 'Chọn hệ trục $A(0;0)$, $B(200;0)$, $D(0;180)$, $C(200;180)$. Cột 1 là $M_1(20;0)$, cột 4 là $M_4(170;180)$. Vì 4 cột cách đều nên $\\vec{M_1M_2} = \\frac{1}{3}\\vec{M_1M_4} \\Rightarrow x_{M_2} = 20 + \\frac{170 - 20}{3} = 70\\text{ m}$.'
+            },
+            {
+                id: 40,
+                level: 'vdc',
+                levelName: 'Vận dụng cao',
+                type: 'quiz',
+                source: 'KNTT - Bài 4.56',
+                timeLimit: 90,
+                timeNote: '90s • Vuông góc trong tam giác đều',
+                question: 'Cho tam giác đều $ABC$ cạnh bằng $1$. Lấy $M, N, P$ lần lượt thuộc các cạnh $BC, CA, AB$ sao cho $BM = 2MC$, $CN = 2NA$ và $AM \\perp NP$. Tỉ số $\\frac{AP}{AB}$ bằng:',
+                options: ['$\\frac{5}{12}$', '$\\frac{7}{12}$', '$\\frac{5}{7}$', '$\\frac{7}{5}$'],
+                correctIndex: 1,
+                explanation: 'Đặt $\\vec{AP} = x\\vec{AB}$. Ta có $\\vec{AM} = \\frac{1}{3}\\vec{AB} + \\frac{2}{3}\\vec{AC}$ và $\\vec{NP} = x\\vec{AB} - \\frac{1}{3}\\vec{AC}$. Với $AB=AC=1$ và $\\vec{AB}\\cdot\\vec{AC} = \\frac{1}{2}$, giải $\\vec{AM}\\cdot\\vec{NP} = 0 \\Leftrightarrow x = \\frac{7}{12}$.'
+            },
+            {
+                id: 41,
+                level: 'vdc',
+                levelName: 'Vận dụng cao',
+                type: 'quiz',
+                source: 'KNTT - Bài 4.55',
+                timeLimit: 85,
+                timeNote: '85s • Tọa độ hóa tam giác vuông',
+                question: 'Cho tam giác $ABC$ vuông tại $A$ có $AB = 1$, $AC = 2$. Lấy $M, N, P$ lần lượt trên $BC, CA, AB$ sao cho $2BM = MC$, $CN = 2NA$, $AP = 2PB$. Giá trị của tích vô hướng $\\vec{AM} \\cdot \\vec{NP}$ bằng:',
+                options: ['$\\frac{2}{3}$', '$-\\frac{1}{2}$', '$0$', '$1$'],
+                correctIndex: 2,
+                explanation: 'Chọn hệ trục $A(0;0)$, $B(1;0)$, $C(0;2)$. Ta tìm được $M(\\frac{2}{3}; \\frac{2}{3})$, $N(0; \\frac{2}{3})$, $P(\\frac{2}{3}; 0)$. Suy ra $\\vec{AM} = (\\frac{2}{3}; \\frac{2}{3})$ và $\\vec{NP} = (\\frac{2}{3}; -\\frac{2}{3}) \\Rightarrow \\vec{AM}\\cdot\\vec{NP} = \\frac{4}{9} - \\frac{4}{9} = 0$.'
+            },
+            {
+                id: 42,
+                level: 'vdc',
+                levelName: 'Vận dụng cao',
+                type: 'quiz',
+                source: 'KNTT - Bài 4.57',
+                timeLimit: 80,
+                timeNote: '80s • Định lí hình chiếu vô hướng',
+                question: 'Cho tam giác đều $ABC$ có cạnh bằng $3a$. Lấy điểm $M$ thuộc cạnh $BC$ sao cho $MB = 2MC$. Tích vô hướng $\\vec{MA} \\cdot \\vec{MC}$ bằng:',
+                options: ['$\\frac{a^2}{2}$', '$-\\frac{a^2}{2}$', '$a^2$', '$-a^2$'],
+                correctIndex: 1,
+                explanation: 'Gọi $I$ là trung điểm $BC$. Hình chiếu vuông góc của $\\vec{MA}$ lên đường thẳng $BC$ là $\\vec{MI} = -\\frac{1}{6}\\vec{BC}$, còn $\\vec{MC} = \\frac{1}{3}\\vec{BC}$. Suy ra $\\vec{MA}\\cdot\\vec{MC} = \\vec{MI}\\cdot\\vec{MC} = -\\frac{1}{18}BC^2 = -\\frac{9a^2}{18} = -\\frac{a^2}{2}$.'
+            },
+            {
+                id: 43,
+                level: 'vdc',
+                levelName: 'Vận dụng cao',
+                type: 'number',
+                source: 'KNTT - Bài 4.26a',
+                timeLimit: 75,
+                timeNote: '75s • Cực trị độ dài tổng vectơ',
+                question: 'Trong mặt phẳng tọa độ $Oxy$, cho hai điểm $C(1; 6)$ và $D(11; 2)$. Điểm $E(0; y_0)$ thuộc trục tung sao cho độ dài vectơ $\\vec{EC} + \\vec{ED}$ đạt giá trị nhỏ nhất. Tìm tung độ $y_0$ của điểm $E$.',
+                correctAnswers: ['4'],
+                explanation: 'Gọi $I(6; 4)$ là trung điểm của $CD$. Ta có $|\\vec{EC} + \\vec{ED}| = |2\\vec{EI}| = 2EI$. Để $EI$ nhỏ nhất thì $E$ là hình chiếu vuông góc của $I(6; 4)$ lên trục tung $Oy$, suy ra $E(0; 4) \\Rightarrow y_0 = 4$.'
+            },
+            {
+                id: 44,
+                level: 'vdc',
+                levelName: 'Vận dụng cao',
+                type: 'quiz',
+                source: 'KNTT - Bài 4.35',
+                timeLimit: 85,
+                timeNote: '85s • Tìm đỉnh hình vuông',
+                question: 'Trong mặt phẳng tọa độ $Oxy$, cho hình vuông $ABCD$ có hai đỉnh đối diện là $A(1; 4)$ và $C(9; 2)$. Biết đỉnh $B$ có tung độ âm, tọa độ của đỉnh $B$ là:',
+                options: ['$(4; -1)$', '$(6; 7)$', '$(5; -2)$', '$(3; -1)$'],
+                correctIndex: 0,
+                explanation: 'Tâm hình vuông là trung điểm $AC$: $I(5; 3)$, vectơ $\\vec{IA} = (-4; 1)$. Vì $IB \\perp IA$ và $IB = IA$ nên $\\vec{IB} = (-1; -4)$ hoặc $(1; 4)$. Do $y_B < 0$ nên $\\vec{IB} = (-1; -4) \\Rightarrow B(5 - 1; 3 - 4) = (4; -1)$.'
+            },
+            {
+                id: 45,
+                level: 'vdc',
+                levelName: 'Vận dụng cao',
+                type: 'quiz',
+                source: 'Cánh Diều - Ví dụ 7',
+                timeLimit: 85,
+                timeNote: '85s • Hệ số tỉ lệ cùng phương',
+                question: 'Cho tam giác $ABC$. Lấy các điểm $D, E, H$ thỏa mãn $\\vec{DB} = \\frac{1}{5}\\vec{BC}$, $\\vec{AE} = \\frac{1}{4}\\vec{AC}$, $\\vec{AH} = \\frac{2}{3}\\vec{AB}$. Biểu thị vectơ $\\vec{HE}$ theo $\\vec{DH}$, ta được $\\vec{HE} = k\\vec{DH}$. Giá trị của $k$ là:',
+                options: ['$\\frac{4}{5}$', '$\\frac{5}{4}$', '$-\\frac{5}{4}$', '$\\frac{3}{4}$'],
+                correctIndex: 1,
+                explanation: 'Phân tích theo $\\vec{AB}, \\vec{AC}$: $\\vec{DH} = -\\frac{8}{15}\\vec{AB} + \\frac{1}{5}\\vec{AC}$ và $\\vec{HE} = -\\frac{2}{3}\\vec{AB} + \\frac{1}{4}\\vec{AC} = \\frac{5}{4}\\left(-\\frac{8}{15}\\vec{AB} + \\frac{1}{5}\\vec{AC}\\right) = \\frac{5}{4}\\vec{DH}$.'
+            },
+            {
+                id: 46,
+                level: 'vdc',
+                levelName: 'Vận dụng cao',
+                type: 'quiz',
+                source: 'Cánh Diều - Ví dụ 9d',
+                timeLimit: 75,
+                timeNote: '75s • Trọng tâm tứ giác',
+                question: 'Cho tứ giác $ABCD$. Gọi $G$ là trọng tâm của tứ giác (tức $\\vec{GA} + \\vec{GB} + \\vec{GC} + \\vec{GD} = \\vec{0}$) và $A\'$ là trọng tâm tam giác $BCD$. Khẳng định nào sau đây đúng?',
+                options: [
+                    '$\\vec{AG} = \\frac{2}{3}\\vec{AA\'}$',
+                    '$\\vec{AG} = \\frac{3}{4}\\vec{AA\'}$',
+                    '$\\vec{AG} = \\frac{1}{4}\\vec{AA\'}$',
+                    '$\\vec{AG} = \\frac{4}{3}\\vec{AA\'}$'
+                ],
+                correctIndex: 1,
+                explanation: 'Ta có $\\vec{AB} + \\vec{AC} + \\vec{AD} = 4\\vec{AG}$ và $\\vec{AB} + \\vec{AC} + \\vec{AD} = 3\\vec{AA\'}$, suy ra $4\\vec{AG} = 3\\vec{AA\'} \\Leftrightarrow \\vec{AG} = \\frac{3}{4}\\vec{AA\'}$.'
+            },
+// ... existing code ... -->
+            {
+                id: 49,
+                level: 'vdc',
+                levelName: 'Vận dụng cao',
+                type: 'quiz',
+                source: 'KNTT - Bài 4.68b',
+                timeLimit: 90,
+                timeNote: '90s • Giải hệ tìm trực tâm',
+                question: 'Trong mặt phẳng tọa độ $Oxy$, cho tam giác $ABC$ có $A(-2; 1)$, $B(1; 4)$ và $C(5; -2)$. Tọa độ trực tâm $H$ của tam giác $ABC$ là:',
+// ... existing code ... -->
+        let gameRole = 'solo'; // 'solo' | 'host' | 'player'
+        let livePin = null;
+        let livePlayerId = null;
+        let livePlayersMap = {};
+        let hostLivePeekEnabled = false;
+        let hostMatchLog = {};
+        let unsubRoom = null;
+        let unsubPlayers = null;
+        let lastRenderedQuestionSig = '';
+        let lastRenderedPhaseSig = '';
+// ... existing code ... -->
+                gameRole = 'host';
+                livePin = pin;
+                activeQuestions = pool;
+                currentIndex = 0;
+                livePlayersMap = {};
+                hostMatchLog = {};
+                hostLivePeekEnabled = false;
+                reviewHistory = [];
+// ... existing code ... -->
+            // If currently in active question phase, check if all players answered
+            if (!document.getElementById('gameScreen').classList.contains('hidden')) {
+                renderHostLiveStudentCards();
+
+                if (!isAnswered) {
+                    const answeredCount = players.filter(p => p.lastAnsweredIndex === currentIndex).length;
+                    const counterEl = document.getElementById('hostAnsweredCounter');
+                    counterEl.textContent = `Đã trả lời: ${answeredCount} / ${count}`;
+
+                    if (count > 0 && answeredCount >= count) {
+                        // Everyone submitted! Auto-reveal immediately
+                        hostRevealCurrentQuestion();
+                    }
+                }
+            }
+        }
+
+        function toggleHostLivePeek() {
+            sfxClick();
+            hostLivePeekEnabled = !hostLivePeekEnabled;
+            const btn = document.getElementById('toggleLivePeekBtn');
+            const label = document.getElementById('toggleLivePeekText');
+            if (btn && label) {
+                if (hostLivePeekEnabled) {
+                    btn.className = 'px-3.5 py-1.5 rounded-xl text-xs font-extrabold border transition flex items-center gap-1.5 bg-purple-700 text-white border-purple-800 shadow-sm';
+                    label.textContent = 'Xem trực tiếp đáp án học sinh chọn: BẬT';
+                } else {
+                    btn.className = 'px-3.5 py-1.5 rounded-xl text-xs font-extrabold border transition flex items-center gap-1.5 bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200';
+                    label.textContent = 'Xem trực tiếp đáp án học sinh chọn: TẮT';
+                }
+            }
+            renderHostLiveStudentCards();
+        }
+
+        function renderHostLiveStudentCards() {
+            const panel = document.getElementById('hostLiveTrackingPanel');
+            const grid = document.getElementById('hostLiveStudentStatusGrid');
+            if (!panel || !grid) return;
+
+            if (gameRole !== 'host') {
+                panel.classList.add('hidden');
+                return;
+            }
+            panel.classList.remove('hidden');
+
+            const players = Object.values(livePlayersMap);
+            if (players.length === 0) {
+                grid.innerHTML = '<div class="col-span-full text-xs text-slate-500 text-center py-2">Chưa có học sinh nào trong phòng.</div>';
+                return;
+            }
+
+            grid.innerHTML = players.map(p => {
+                const submitted = p.lastAnsweredIndex === currentIndex;
+                const timeText = typeof p.lastTimeSpent === 'number' ? `${p.lastTimeSpent.toFixed(1)}s` : '';
+                let statusHtml = '';
+                let peekHtml = '';
+
+                if (!submitted) {
+                    statusHtml = `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800">⏳ Đang suy nghĩ...</span>`;
+                } else {
+                    statusHtml = `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800">✅ Đã nộp ${timeText ? `(${timeText})` : ''}</span>`;
+                    if (hostLivePeekEnabled) {
+                        const isRight = Boolean(p.lastIsCorrect);
+                        const choiceDisplay = p.lastAnswerText || p.lastShortChoice || 'Đã chọn';
+                        peekHtml = `
+                            <div class="mt-2 pt-2 border-t border-slate-200/80 flex items-center justify-between gap-2 text-xs">
+                                <span class="font-bold text-slate-800 truncate">Chọn: ${choiceDisplay}</span>
+                                <span class="px-2 py-0.5 rounded-lg font-kahoot font-extrabold whitespace-nowrap ${isRight ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'}">
+                                    ${isRight ? 'ĐÚNG' : 'SAI'}
+                                </span>
+                            </div>
+                        `;
+                    } else {
+                        peekHtml = `
+                            <div class="mt-1.5 text-[11px] text-slate-400 italic">
+                                🔒 Đã khóa phương án (Bật 👁️ để xem trước)
+                            </div>
+                        `;
+                    }
+                }
+
+                return `
+                    <div class="p-3 rounded-2xl border ${submitted ? 'bg-emerald-50/40 border-emerald-200' : 'bg-slate-50 border-slate-200'} transition">
+                        <div class="flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <span class="text-xl flex-shrink-0">${p.avatar || '🦊'}</span>
+                                <span class="font-kahoot font-extrabold text-sm text-slate-900 truncate">${escapeHtml(p.name)}</span>
+                            </div>
+                            ${statusHtml}
+                        </div>
+                        ${peekHtml}
+                    </div>
+                `;
+            }).join('');
+
+            renderMath(grid);
+        }
+        }
+
+        async function initFirebaseLayer() {
+            if (!firebaseConfig) return;
+            try {
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                firebaseReady = true;
+                updateConnectionUI();
+            } catch (err) {
+                console.warn("Firebase layer unavailable, relying on MQTT WebSocket:", err);
+            }
+        }
+
+        function initMqttLayer() {
+            if (typeof mqtt === 'undefined') return;
+            try {
+                mqttClient = mqtt.connect(MQTT_BROKER_URL, {
+                    clientId: 'kvn_' + clientUid,
+                    clean: true,
+                    connectTimeout: 8000,
+                    reconnectPeriod: 2500
+                });
+
+                mqttClient.on('connect', () => {
+                    mqttReady = true;
+                    updateConnectionUI();
+                    // Re-subscribe any active topics on reconnect
+                    subscribedTopics.forEach(t => mqttClient.subscribe(t, { qos: 1 }));
+                });
+
+                mqttClient.on('close', () => {
+                    mqttReady = false;
+                    updateConnectionUI();
+                });
+
+                mqttClient.on('error', (err) => {
+                    console.warn("MQTT connection warning:", err);
+                });
+
+                mqttClient.on('message', (topic, payloadBuf) => {
+                    try {
+                        const raw = payloadBuf.toString();
+                        if (!raw) return;
+                        const data = JSON.parse(raw);
+                        handleIncomingTopicMessage(topic, data);
+                    } catch (e) { /* Ignore malformed packets */ }
+                });
+            } catch (err) {
+                console.warn("MQTT init failed:", err);
+            }
+        }
+
+        if (bc) {
+            bc.onmessage = (ev) => {
+                if (ev.data && ev.data.topic && ev.data.payload) {
+                    handleIncomingTopicMessage(ev.data.topic, ev.data.payload);
+                }
+            };
+        }
+
+        function publishSyncPacket(topic, payloadObj, retain = true) {
+            if (mqttClient && mqttReady) {
+                mqttClient.publish(topic, JSON.stringify(payloadObj), { qos: 1, retain });
+            }
+            if (bc) {
+                bc.postMessage({ topic, payload: payloadObj });
+            }
+        }
+
+        function subscribeTopic(topic) {
+            subscribedTopics.add(topic);
+            if (mqttClient && mqttReady) {
+                mqttClient.subscribe(topic, { qos: 1 });
+            }
+        }
+
+        function handleIncomingTopicMessage(topic, data) {
+            // Expected formats:
+            // kahoot-vn-vecto10/{pin}/state
+            // kahoot-vn-vecto10/{pin}/player/{playerId}
+            const parts = topic.split('/');
+            if (parts.length < 3 || parts[0] !== TOPIC_PREFIX) return;
+            const pin = parts[1];
+            const kind = parts[2];
+
+            if (kind === 'state') {
+                mqttRoomCache[pin] = data;
+                const cbs = roomListeners.get(pin);
+                if (cbs) cbs.forEach(fn => fn(data));
+            } else if (kind === 'player' && parts[3]) {
+                const pid = parts[3];
+                if (!mqttPlayersCache[pin]) mqttPlayersCache[pin] = {};
+                mqttPlayersCache[pin][pid] = { ...(mqttPlayersCache[pin][pid] || {}), ...data };
+                const cbs = playerListeners.get(pin);
+                if (cbs) cbs.forEach(fn => fn({ ...mqttPlayersCache[pin] }));
+            }
+        }
+
+        // Unified Bridge consumed by UI & Game Logic
+        window.fbBridge = {
+            isReady: () => Boolean(firebaseReady || mqttReady || bc),
+            getUid: () => (firebaseReady && auth?.currentUser?.uid) ? auth.currentUser.uid : clientUid,
+
+            createRoomDoc: async (pin, payload) => {
+                mqttRoomCache[pin] = payload;
+                publishSyncPacket(`${TOPIC_PREFIX}/${pin}/state`, payload, true);
+
+                if (firebaseReady && db) {
+                    const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'kahoot_rooms', pin);
+                    await setDoc(roomRef, payload);
+                }
+            },
+
+            getRoomDoc: async (pin) => {
+                // 1. Check local cache first
+                if (mqttRoomCache[pin]) {
+                    return { exists: () => true, data: () => mqttRoomCache[pin] };
+                }
+                // 2. Check Firestore if available
+                if (firebaseReady && db) {
+                    try {
+                        const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'kahoot_rooms', pin);
+                        const snap = await getDoc(roomRef);
+                        if (snap.exists()) {
+                            mqttRoomCache[pin] = snap.data();
+                            return snap;
+                        }
+                    } catch (e) { /* Fallback to MQTT retained check */ }
+                }
+                // 3. Subscribe to MQTT retained state topic and await up to 2.2s for broker retained message
+                return await new Promise((resolve) => {
+                    const stateTopic = `${TOPIC_PREFIX}/${pin}/state`;
+                    subscribeTopic(stateTopic);
+                    let settled = false;
+                    const listener = (roomData) => {
+                        if (settled) return;
+                        settled = true;
+                        clearTimeout(timer);
+                        roomListeners.get(pin)?.delete(listener);
+                        resolve({ exists: () => true, data: () => roomData });
+                    };
+                    if (!roomListeners.has(pin)) roomListeners.set(pin, new Set());
+                    roomListeners.get(pin).add(listener);
+
+                    const timer = setTimeout(() => {
+                        if (settled) return;
+                        settled = true;
+                        roomListeners.get(pin)?.delete(listener);
+                        if (mqttRoomCache[pin]) {
+                            resolve({ exists: () => true, data: () => mqttRoomCache[pin] });
+                        } else {
+                            resolve({ exists: () => false, data: () => null });
+                        }
+                    }, 2200);
+                });
+            },
+
+            updateRoomDoc: async (pin, partialData) => {
+                const merged = { ...(mqttRoomCache[pin] || {}), ...partialData };
+                mqttRoomCache[pin] = merged;
+                publishSyncPacket(`${TOPIC_PREFIX}/${pin}/state`, merged, true);
+
+                if (firebaseReady && db) {
+                    try {
+                        const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'kahoot_rooms', pin);
+                        await updateDoc(roomRef, partialData);
+                    } catch (e) { /* MQTT already synced */ }
+                }
+            },
+
+            listenRoomDoc: (pin, onData, onErr) => {
+                const stateTopic = `${TOPIC_PREFIX}/${pin}/state`;
+                subscribeTopic(stateTopic);
+
+                const wrapper = (data) => {
+                    onData({ exists: () => Boolean(data), data: () => data });
+                };
+                if (!roomListeners.has(pin)) roomListeners.set(pin, new Set());
+                roomListeners.get(pin).add(wrapper);
+
+                if (mqttRoomCache[pin]) {
+                    setTimeout(() => wrapper(mqttRoomCache[pin]), 0);
+                }
+
+                let fbUnsub = null;
+                if (firebaseReady && db) {
+                    const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'kahoot_rooms', pin);
+                    fbUnsub = onSnapshot(roomRef, (snap) => {
+                        if (snap.exists()) {
+                            mqttRoomCache[pin] = snap.data();
+                            onData(snap);
+                        }
+                    }, onErr || (() => {}));
+                }
+
+                return () => {
+                    roomListeners.get(pin)?.delete(wrapper);
+                    if (typeof fbUnsub === 'function') fbUnsub();
+                };
+            },
+
+            upsertPlayerDoc: async (pin, playerId, playerData) => {
+                if (!mqttPlayersCache[pin]) mqttPlayersCache[pin] = {};
+                const merged = { ...(mqttPlayersCache[pin][playerId] || {}), ...playerData };
+                mqttPlayersCache[pin][playerId] = merged;
+
+                publishSyncPacket(`${TOPIC_PREFIX}/${pin}/player/${playerId}`, merged, true);
+                publishSyncPacket(`${TOPIC_PREFIX}/${pin}/action`, { type: 'player_update', playerId, ts: Date.now() }, false);
+
+                if (firebaseReady && db) {
+                    try {
+                        const pRef = doc(db, 'artifacts', appId, 'public', 'data', `kahoot_players_${pin}`, playerId);
+                        await setDoc(pRef, merged, { merge: true });
+                    } catch (e) { /* MQTT already synced */ }
+                }
+            },
+
+            listenPlayersCol: (pin, onData, onErr) => {
+                subscribeTopic(`${TOPIC_PREFIX}/${pin}/player/+`);
+                subscribeTopic(`${TOPIC_PREFIX}/${pin}/action`);
+
+                const wrapper = (playersMap) => {
+                    const fakeDocs = Object.entries(playersMap).map(([id, d]) => ({
+                        id,
+                        data: () => d
+                    }));
+                    onData({
+                        forEach: (cb) => fakeDocs.forEach(cb)
+                    });
+                };
+                if (!playerListeners.has(pin)) playerListeners.set(pin, new Set());
+                playerListeners.get(pin).add(wrapper);
+
+                if (mqttPlayersCache[pin]) {
+                    setTimeout(() => wrapper(mqttPlayersCache[pin]), 0);
+                }
+
+                let fbUnsub = null;
+                if (firebaseReady && db) {
+                    const colRef = collection(db, 'artifacts', appId, 'public', 'data', `kahoot_players_${pin}`);
+                    fbUnsub = onSnapshot(colRef, (snap) => {
+                        snap.forEach(d => {
+                            if (!mqttPlayersCache[pin]) mqttPlayersCache[pin] = {};
+                            mqttPlayersCache[pin][d.id] = d.data();
+                        });
+                        onData(snap);
+                    }, onErr || (() => {}));
+                }
+
+                return () => {
+                    playerListeners.get(pin)?.delete(wrapper);
+                    if (typeof fbUnsub === 'function') fbUnsub();
+                };
+            }
+        };
+
+        initFirebaseLayer();
+        initMqttLayer();
+    </script>
+
+    <script>
+        /**
+         * =========================================================================
+         * BỘ DỮ LIỆU 50 CÂU HỎI CHUYÊN ĐỀ VECTƠ TOÁN 10
+         * =========================================================================
+         */
+        const QUESTIONS_DB = [
+            // ================= PHẦN 1: NHẬN BIẾT (10 CÂU) =================
+            {
+                id: 1,
+                level: 'nb',
+                levelName: 'Nhận biết',
+                type: 'quiz',
+                source: 'Cánh Diều',
+                timeLimit: 15,
+                timeNote: '15s • Lý thuyết nhanh',
+                question: 'Vectơ-không ($\\vec{0}$) là vectơ có đặc điểm nào sau đây?',
+                options: [
+                    'Có độ dài bằng $1$ và cùng hướng với mọi vectơ.',
+                    'Có điểm đầu và điểm cuối trùng nhau, độ dài bằng $0$.',
+                    'Không cùng phương với bất kì vectơ nào.',
+                    'Chỉ cùng hướng với chính nó.'
+                ],
+                correctIndex: 1,
+                explanation: 'Theo định nghĩa, vectơ-không ($\\vec{0}$) là vectơ có điểm đầu và điểm cuối trùng nhau, độ dài bằng $0$ và cùng phương, cùng hướng với mọi vectơ.'
+            },
+            {
+                id: 2,
+                level: 'nb',
+                levelName: 'Nhận biết',
+                type: 'tf',
+                source: 'Kết nối tri thức',
+                timeLimit: 15,
+                timeNote: '15s • Đúng/Sai cơ bản',
+                question: 'Hai vectơ được gọi là bằng nhau nếu chúng có cùng độ dài và cùng phương.',
+                correctBool: false,
+                explanation: '<strong>Sai.</strong> Hai vectơ bằng nhau khi và chỉ khi chúng có cùng độ dài và <strong>cùng hướng</strong> (cùng phương chỉ mới đảm bảo giá song song hoặc trùng nhau, có thể ngược hướng).'
+            },
+            {
+                id: 3,
+                level: 'nb',
+                levelName: 'Nhận biết',
+                type: 'quiz',
+                source: 'Cánh Diều - Ví dụ 1',
+                timeLimit: 20,
+                timeNote: '20s • Liệt kê đỉnh',
+                question: 'Cho tứ giác $ABCD$. Có bao nhiêu vectơ khác $\\vec{0}$ có điểm đầu là $A$ và điểm cuối là một trong các đỉnh còn lại của tứ giác?',
+                options: ['$2$', '$3$', '$4$', '$6$'],
+                correctIndex: 1,
+                explanation: 'Có đúng $3$ vectơ thỏa mãn điều kiện đề bài là: $\\vec{AB}, \\vec{AC}, \\vec{AD}$.'
+            },
+            {
+                id: 4,
+                level: 'nb',
+                levelName: 'Nhận biết',
+                type: 'tf',
+                source: 'Kết nối tri thức',
+                timeLimit: 15,
+                timeNote: '15s • Quy tắc ba điểm',
+                question: 'Với ba điểm bất kì $A, B, C$ trong mặt phẳng, ta luôn có đẳng thức $\\vec{AB} + \\vec{BC} = \\vec{AC}$.',
+                correctBool: true,
+                explanation: '<strong>Đúng.</strong> Đây chính là quy tắc ba điểm (quy tắc cộng) đối với phép cộng hai vectơ.'
+            },
+            {
+                id: 5,
+                level: 'nb',
+                levelName: 'Nhận biết',
+                type: 'quiz',
+                source: 'Cánh Diều - Bài 33',
+                timeLimit: 20,
+                timeNote: '20s • Quy tắc hình bình hành',
+                question: 'Cho hình bình hành $ABCD$. Khẳng định nào sau đây là đúng?',
+                options: [
+                    '$\\vec{AB} + \\vec{AD} = \\vec{AC}$',
+                    '$\\vec{AB} + \\vec{AD} = \\vec{BD}$',
+                    '$\\vec{AB} + \\vec{BC} = \\vec{DA}$',
+                    '$\\vec{BA} + \\vec{DA} = \\vec{AC}$'
+                ],
+                correctIndex: 0,
+                explanation: 'Theo quy tắc hình bình hành, với hình bình hành $ABCD$ ta luôn có $\\vec{AB} + \\vec{AD} = \\vec{AC}$.'
+            },
+            {
+                id: 6,
+                level: 'nb',
+                levelName: 'Nhận biết',
+                type: 'quiz',
+                source: 'Kết nối tri thức',
+                timeLimit: 20,
+                timeNote: '20s • Tính chất trung điểm',
+                question: 'Điều kiện cần và đủ để điểm $I$ là trung điểm của đoạn thẳng $AB$ là:',
+                options: [
+                    '$\\vec{IA} = \\vec{IB}$',
+                    '$\\vec{IA} + \\vec{IB} = \\vec{0}$',
+                    '$IA = IB$',
+                    '$\\vec{AI} + \\vec{BI} = \\vec{0}$'
+                ],
+                correctIndex: 1,
+                explanation: '$I$ là trung điểm của $AB$ khi và chỉ khi $\\vec{IA}$ và $\\vec{IB}$ là hai vectơ đối nhau, tức là $\\vec{IA} + \\vec{IB} = \\vec{0}$.'
+            },
+            {
+                id: 7,
+                level: 'nb',
+                levelName: 'Nhận biết',
+                type: 'quiz',
+                source: 'Cánh Diều - Bài 49',
+                timeLimit: 20,
+                timeNote: '20s • Tích một số với vectơ',
+                question: 'Cho vectơ $\\vec{a} \\neq \\vec{0}$. Khẳng định nào sau đây là <strong>sai</strong>?',
+                options: [
+                    '$\\vec{a}$ và $5\\vec{a}$ cùng phương.',
+                    '$\\vec{a}$ và $-5\\vec{a}$ cùng phương.',
+                    '$\\vec{a}$ và $5\\vec{a}$ ngược hướng.',
+                    '$\\vec{a}$ và $-5\\vec{a}$ ngược hướng.'
+                ],
+                correctIndex: 2,
+                explanation: 'Vì số $k = 5 > 0$ nên vectơ $5\\vec{a}$ <strong>cùng hướng</strong> với vectơ $\\vec{a}$. Do đó khẳng định C sai.'
+            },
+            {
+                id: 8,
+                level: 'nb',
+                levelName: 'Nhận biết',
+                type: 'number',
+                source: 'Kết nối tri thức',
+                timeLimit: 25,
+                timeNote: '25s • Tính nhẩm & nhập số',
+                question: 'Trong mặt phẳng tọa độ $Oxy$, cho vectơ $\\vec{u} = 3\\vec{i} - 4\\vec{j}$. Độ dài của vectơ $\\vec{u}$ bằng bao nhiêu?',
+                correctAnswers: ['5'],
+                explanation: 'Ta có $\\vec{u} = (3; -4)$. Độ dài $|\\vec{u}| = \\sqrt{3^2 + (-4)^2} = \\sqrt{9 + 16} = 5$.'
+            },
+            {
+                id: 9,
+                level: 'nb',
+                levelName: 'Nhận biết',
+                type: 'tf',
+                source: 'Kết nối tri thức',
+                timeLimit: 15,
+                timeNote: '15s • Điều kiện vuông góc',
+                question: 'Hai vectơ khác vectơ-không $\\vec{u}$ và $\\vec{v}$ vuông góc với nhau khi và chỉ khi tích vô hướng $\\vec{u} \\cdot \\vec{v} = 0$.',
+                correctBool: true,
+                explanation: '<strong>Đúng.</strong> Vì $\\vec{u} \\cdot \\vec{v} = |\\vec{u}|.|\\vec{v}|.\\cos(\\vec{u}, \\vec{v}) = 0 \\Leftrightarrow \\cos(\\vec{u}, \\vec{v}) = 0 \\Leftrightarrow (\\vec{u}, \\vec{v}) = 90^\\circ$.'
+            },
+            {
+                id: 10,
+                level: 'nb',
+                levelName: 'Nhận biết',
+                type: 'puzzle',
+                source: 'Cánh Diều & KNTT',
+                timeLimit: 35,
+                timeNote: '35s • Ghép 4 công thức',
+                question: 'Sắp xếp 4 biểu thức ở thẻ tương ứng với các mô tả sau theo đúng thứ tự (1 → 2 → 3 → 4):<br><span class="text-sm sm:text-base font-normal text-slate-600">1. Quy tắc trừ $\\vec{OB} - \\vec{OA}$ &nbsp;|&nbsp; 2. Trọng tâm $G$ của $\\triangle ABC$ &nbsp;|&nbsp; 3. Tích vô hướng $\\vec{u}(x_1;y_1), \\vec{v}(x_2;y_2)$ &nbsp;|&nbsp; 4. Trung điểm $M$ của $AB$ với $O$ bất kì</span>',
+                cards: [
+                    '$\\vec{AB}$',
+                    '$\\vec{GA} + \\vec{GB} + \\vec{GC} = \\vec{0}$',
+                    '$x_1x_2 + y_1y_2$',
+                    '$\\vec{OA} + \\vec{OB} = 2\\vec{OM}$'
+                ],
+                explanation: 'Thứ tự chuẩn: (1) $\\vec{OB} - \\vec{OA} = \\vec{AB}$; (2) $\\vec{GA} + \\vec{GB} + \\vec{GC} = \\vec{0}$; (3) $\\vec{u}\\cdot\\vec{v} = x_1x_2 + y_1y_2$; (4) $\\vec{OA} + \\vec{OB} = 2\\vec{OM}$.'
+            },
+
+            // ================= PHẦN 2: THÔNG HIỂU (13 CÂU) =================
+            {
+                id: 11,
+                level: 'th',
+                levelName: 'Thông hiểu',
+                type: 'quiz',
+                source: 'KNTT - Bài 4.40',
+                timeLimit: 25,
+                timeNote: '25s • Hình dung vị trí điểm',
+                question: 'Cho đoạn thẳng $AC$ và điểm $B$ nằm giữa hai điểm $A, C$. Khẳng định nào sau đây đúng?',
+                options: [
+                    'Hai vectơ $\\vec{AB}$ và $\\vec{CB}$ cùng hướng.',
+                    'Hai vectơ $\\vec{CA}$ và $\\vec{BC}$ cùng hướng.',
+                    'Hai vectơ $\\vec{AB}$ và $\\vec{AC}$ cùng hướng.',
+                    'Hai vectơ $\\vec{AC}$ và $\\vec{BA}$ cùng hướng.'
+                ],
+                correctIndex: 2,
+                explanation: 'Vì $B$ nằm giữa $A$ và $C$ nên tia $AB$ trùng với tia $AC$, do đó hai vectơ $\\vec{AB}$ và $\\vec{AC}$ cùng hướng.'
+            },
+            {
+                id: 12,
+                level: 'th',
+                levelName: 'Thông hiểu',
+                type: 'number',
+                source: 'KNTT - Bài 4.39',
+                timeLimit: 35,
+                timeNote: '35s • Đếm tổ hợp & nhập số',
+                question: 'Cho hình bình hành $ABCD$ tâm $O$. Xét các vectơ khác $\\vec{0}$ có điểm đầu và điểm cuối lấy từ các điểm $A, B, C, D, O$. Có tất cả bao nhiêu vectơ cùng phương với vectơ $\\vec{AC}$?',
+                correctAnswers: ['6'],
+                explanation: 'Các vectơ khác $\\vec{0}$ nằm trên đường thẳng $AC$ (đi qua 3 điểm $A, O, C$) gồm $3 \\times 2 = 6$ vectơ: $\\vec{AC}, \\vec{CA}, \\vec{AO}, \\vec{OA}, \\vec{OC}, \\vec{CO}$.'
+            },
+            {
+                id: 13,
+                level: 'th',
+                levelName: 'Thông hiểu',
+                type: 'quiz',
+                source: 'Cánh Diều - Ví dụ 10',
+                timeLimit: 25,
+                timeNote: '25s • Quỹ tích điểm cơ bản',
+                question: 'Trong mặt phẳng cho hai điểm phân biệt $A, B$. Tập hợp tất cả các điểm $M$ thỏa mãn $|\\vec{AM}| = |\\vec{BM}|$ là hình gì?',
+                options: [
+                    'Đường tròn tâm $A$ bán kính $AB$.',
+                    'Đường trung trực của đoạn thẳng $AB$.',
+                    'Đường tròn đường kính $AB$.',
+                    'Trung điểm của đoạn thẳng $AB$.'
+                ],
+                correctIndex: 1,
+                explanation: 'Ta có $|\\vec{AM}| = |\\vec{BM}| \\Leftrightarrow AM = BM$, suy ra $M$ cách đều hai đầu mút $A, B$ nên tập hợp điểm $M$ là đường trung trực của $AB$.'
+            },
+            {
+                id: 14,
+                level: 'th',
+                levelName: 'Thông hiểu',
+                type: 'tf',
+                source: 'Cánh Diều - Ví dụ 11',
+                timeLimit: 20,
+                timeNote: '20s • Vật lý & Vectơ',
+                question: 'Treo một vật có khối lượng $10\\text{ kg}$ vào một sợi dây thẳng đứng. Khi vật đứng yên, vectơ trọng lực $\\vec{P}$ và vectơ lực căng dây $\\vec{T}$ là hai vectơ cùng phương, cùng hướng.',
+                correctBool: false,
+                explanation: '<strong>Sai.</strong> Khi vật cân bằng đứng yên, $\\vec{P} + \\vec{T} = \\vec{0}$, hai vectơ này cùng phương thẳng đứng nhưng <strong>ngược hướng</strong> nhau ($\\vec{P}$ hướng xuống, $\\vec{T}$ hướng lên).'
+            },
+            {
+                id: 15,
+                level: 'th',
+                levelName: 'Thông hiểu',
+                type: 'quiz',
+                source: 'KNTT - Bài 4.1',
+                timeLimit: 30,
+                timeNote: '30s • Kiểm tra 4 hệ thức',
+                question: 'Cho tam giác $ABC$, $M$ là trung điểm $BC$ và $G$ là trọng tâm tam giác. Khẳng định nào sau đây là <strong>sai</strong>?',
+                options: [
+                    '$\\vec{GA}$ và $\\vec{GM}$ ngược hướng.',
+                    '$\\vec{AG} = \\frac{2}{3}\\vec{AM}$.',
+                    '$\\vec{GA} = -2\\vec{GM}$.',
+                    '$\\vec{AM} = 3\\vec{GM}$.'
+                ],
+                correctIndex: 3,
+                explanation: 'Vì $\\vec{AM}$ và $\\vec{GM}$ ngược hướng nhau nên hệ thức đúng phải là $\\vec{AM} = -3\\vec{GM}$. Do đó đáp án D sai.'
+            },
+            {
+                id: 16,
+                level: 'th',
+                levelName: 'Thông hiểu',
+                type: 'number',
+                source: 'Cánh Diều - Bài 28',
+                timeLimit: 30,
+                timeNote: '30s • Tính đường chéo & nhập số',
+                question: 'Cho hình vuông $ABCD$ có cạnh bằng $3\\sqrt{2}$. Tính độ dài của vectơ $\\vec{AC}$.',
+                correctAnswers: ['6'],
+                explanation: 'Độ dài vectơ $\\vec{AC}$ bằng độ dài đường chéo hình vuông: $|\\vec{AC}| = AC = a\\sqrt{2} = 3\\sqrt{2} \\cdot \\sqrt{2} = 6$.'
+            },
+            {
+                id: 17,
+                level: 'th',
+                levelName: 'Thông hiểu',
+                type: 'quiz',
+                source: 'KNTT - Bài 4.48',
+                timeLimit: 30,
+                timeNote: '30s • Tính tọa độ trọng tâm',
+                question: 'Trong mặt phẳng tọa độ $Oxy$, cho ba điểm $A(-3; 1)$, $B(2; -1)$, $C(4; 6)$. Tọa độ trọng tâm $G$ của tam giác $ABC$ là:',
+                options: ['$(1; 2)$', '$(2; 1)$', '$(1; -2)$', '$(-2; 1)$'],
+                correctIndex: 0,
+                explanation: 'Ta có $x_G = \\frac{-3 + 2 + 4}{3} = 1$ và $y_G = \\frac{1 + (-1) + 6}{3} = 2$. Vậy $G(1; 2)$.'
+            },
+            {
+                id: 18,
+                level: 'th',
+                levelName: 'Thông hiểu',
+                type: 'number',
+                source: 'Cánh Diều - Tọa độ',
+                timeLimit: 30,
+                timeNote: '30s • Tìm x cùng phương',
+                question: 'Trong mặt phẳng tọa độ $Oxy$, cho hai vectơ $\\vec{a} = (2; -3)$ và $\\vec{b} = (x; 6)$. Tìm giá trị của $x$ để hai vectơ $\\vec{a}$ và $\\vec{b}$ cùng phương.',
+                correctAnswers: ['-4'],
+                explanation: 'Hai vectơ $\\vec{a}$ và $\\vec{b}$ cùng phương khi và chỉ khi $\\frac{x}{2} = \\frac{6}{-3} = -2 \\Leftrightarrow x = -4$.'
+            },
+            {
+                id: 19,
+                level: 'th',
+                levelName: 'Thông hiểu',
+                type: 'quiz',
+                source: 'KNTT - Bài 4.51',
+                timeLimit: 25,
+                timeNote: '25s • Suy luận tích vô hướng',
+                question: 'Cho hai vectơ $\\vec{a}, \\vec{b}$ đều khác $\\vec{0}$. Đẳng thức $\\vec{a} \\cdot \\vec{b} = |\\vec{a}| \\cdot |\\vec{b}|$ tương đương với điều kiện nào sau đây?',
+                options: [
+                    '$\\vec{a}$ và $\\vec{b}$ vuông góc với nhau.',
+                    '$\\vec{a}$ và $\\vec{b}$ ngược hướng.',
+                    '$\\vec{a}$ và $\\vec{b}$ cùng hướng.',
+                    '$\\vec{a} = \\vec{b}$.'
+                ],
+                correctIndex: 2,
+                explanation: '$\\vec{a} \\cdot \\vec{b} = |\\vec{a}|.|\\vec{b}|.\\cos(\\vec{a}, \\vec{b}) = |\\vec{a}|.|\\vec{b}| \\Leftrightarrow \\cos(\\vec{a}, \\vec{b}) = 1 \\Leftrightarrow (\\vec{a}, \\vec{b}) = 0^\\circ$, tức hai vectơ cùng hướng.'
+            },
+            {
+                id: 20,
+                level: 'th',
+                levelName: 'Thông hiểu',
+                type: 'tf',
+                source: 'KNTT - Ví dụ 1',
+                timeLimit: 25,
+                timeNote: '25s • Cẩn thận bẫy góc vectơ',
+                question: 'Cho tam giác đều $ABC$ cạnh $a$. Góc giữa hai vectơ $\\vec{AB}$ và $\\vec{BC}$ bằng $60^\\circ$.',
+                correctBool: false,
+                explanation: '<strong>Sai.</strong> Vì điểm cuối của $\\vec{AB}$ trùng điểm đầu của $\\vec{BC}$ nên góc giữa hai vectơ là góc ngoài tại đỉnh $B$: $(\\vec{AB}, \\vec{BC}) = 180^\\circ - 60^\\circ = 120^\\circ$.'
+            },
+            {
+                id: 21,
+                level: 'th',
+                levelName: 'Thông hiểu',
+                type: 'quiz',
+                source: 'KNTT - Bài 4.50',
+                timeLimit: 35,
+                timeNote: '35s • Tính tích vô hướng',
+                question: 'Cho hình vuông $ABCD$ có cạnh bằng $a$. Tích vô hướng $\\vec{AB} \\cdot \\vec{AC}$ bằng:',
+                options: [
+                    '$a^2\\sqrt{2}$',
+                    '$a^2$',
+                    '$\\frac{a^2}{2}$',
+                    '$\\frac{a^2\\sqrt{2}}{2}$'
+                ],
+                correctIndex: 1,
+                explanation: '$\\vec{AB} \\cdot \\vec{AC} = AB \\cdot AC \\cdot \\cos 45^\\circ = a \\cdot a\\sqrt{2} \\cdot \\frac{\\sqrt{2}}{2} = a^2$.'
+            },
+            {
+                id: 22,
+                level: 'th',
+                levelName: 'Thông hiểu',
+                type: 'quiz',
+                source: 'Cánh Diều - Hình học',
+                timeLimit: 30,
+                timeNote: '30s • Tính độ dài tổng vectơ',
+                question: 'Cho hình chữ nhật $ABCD$ có $AB = 6$, $AD = 8$. Độ dài của vectơ $\\vec{AB} + \\vec{AD}$ bằng bao nhiêu?',
+                options: ['$14$', '$2$', '$10$', '$48$'],
+                correctIndex: 2,
+                explanation: 'Theo quy tắc hình bình hành: $|\\vec{AB} + \\vec{AD}| = |\\vec{AC}| = AC = \\sqrt{6^2 + 8^2} = 10$.'
+            },
+            {
+                id: 23,
+                level: 'th',
+                levelName: 'Thông hiểu',
+                type: 'puzzle',
+                source: 'KNTT - Ví dụ 1',
+                timeLimit: 45,
+                timeNote: '45s • Xác định 4 góc vectơ',
+                question: 'Cho tam giác đều $ABC$ có cạnh bằng $1$ và tâm $O$. Hãy ghép các cặp vectơ theo đúng thứ tự các góc giữa chúng sau đây:<br><span class="text-purple-700 font-extrabold">$60^\\circ \\longrightarrow 90^\\circ \\longrightarrow 120^\\circ \\longrightarrow 30^\\circ$</span>',
+                cards: [
+                    '$(\\vec{AB}, \\vec{AC})$',
+                    '$(\\vec{OA}, \\vec{BC})$',
+                    '$(\\vec{AB}, \\vec{BC})$',
+                    '$(\\vec{OB}, \\vec{CB})$'
+                ],
+                explanation: '$(\\vec{AB}, \\vec{AC}) = 60^\\circ$; $OA \\perp BC \\Rightarrow (\\vec{OA}, \\vec{BC}) = 90^\\circ$; $(\\vec{AB}, \\vec{BC}) = 120^\\circ$; $(\\vec{OB}, \\vec{CB}) = \\widehat{OBC} = 30^\\circ$.'
+            },
+
+            // ================= PHẦN 3: VẬN DỤNG (12 CÂU) =================
+            {
+                id: 24,
+                level: 'vd',
+                levelName: 'Vận dụng',
+                type: 'quiz',
+                source: 'KNTT - Bài 4.6',
+                timeLimit: 45,
+                timeNote: '45s • Toán thực tế hàng hải',
+                question: 'Trên biển Đông, một tàu chuyển động đều từ cảng $A$ theo hướng $\\text{N}20^\\circ\\text{E}$ với vận tốc $25\\text{ km/h}$. Sau $2\\text{ giờ}$, tàu đến vị trí $B$. Hỏi cảng $A$ cách vị trí $B$ bao xa và ở hướng nào so với $B$?',
+                options: [
+                    '$50\\text{ km}$, hướng $\\text{N}20^\\circ\\text{E}$.',
+                    '$50\\text{ km}$, hướng $\\text{S}20^\\circ\\text{W}$.',
+                    '$25\\text{ km}$, hướng $\\text{S}20^\\circ\\text{W}$.',
+                    '$50\\text{ km}$, hướng $\\text{S}70^\\circ\\text{W}$.'
+                ],
+                correctIndex: 1,
+                explanation: 'Quãng đường $AB = 25 \\times 2 = 50\\text{ km}$. Vectơ $\\vec{BA}$ ngược hướng với $\\vec{AB}$ ($\\text{N}20^\\circ\\text{E}$) nên cảng $A$ nằm ở hướng đối xứng là $\\text{S}20^\\circ\\text{W}$ so với $B$.'
+            },
+            {
+                id: 25,
+                level: 'vd',
+                levelName: 'Vận dụng',
+                type: 'number',
+                source: 'Cánh Diều - Ví dụ 11',
+                timeLimit: 50,
+                timeNote: '50s • Tổng hợp lực góc 120°',
+                question: 'Ba lực $\\vec{F}_1, \\vec{F}_2, \\vec{F}_3$ cùng tác động vào một vật tại điểm $O$ và vật đứng yên. Biết cường độ của $\\vec{F}_1$ và $\\vec{F}_2$ đều bằng $150\\text{ N}$ và góc tạo bởi hai lực này là $120^\\circ$. Tính cường độ của lực $\\vec{F}_3$ (đơn vị: N).',
+                correctAnswers: ['150'],
+                explanation: 'Vật đứng yên $\\Rightarrow \\vec{F}_3 = -(\\vec{F}_1 + \\vec{F}_2)$. Hình bình hành tạo bởi $\\vec{F}_1, \\vec{F}_2$ là hình thoi cạnh $150$ có góc $120^\\circ$, nên đường chéo $|\\vec{F}_1 + \\vec{F}_2| = 150\\text{ N} \\Rightarrow |\\vec{F}_3| = 150\\text{ N}$.'
+            },
+            {
+                id: 26,
+                level: 'vd',
+                levelName: 'Vận dụng',
+                type: 'number',
+                source: 'KNTT - Bài 4.11',
+                timeLimit: 45,
+                timeNote: '45s • Tổng hợp lực vuông góc',
+                question: 'Một chất điểm $A$ chịu tác dụng của ba lực $\\vec{F}_1, \\vec{F}_2, \\vec{F}_3$ và ở trạng thái cân bằng. Biết hai lực $\\vec{F}_1, \\vec{F}_2$ vuông góc với nhau và có độ lớn lần lượt là $30\\text{ N}$ và $40\\text{ N}$. Tính độ lớn của lực $\\vec{F}_3$ (đơn vị: N).',
+                correctAnswers: ['50'],
+                explanation: 'Vì $\\vec{F}_1 \\perp \\vec{F}_2$ nên $|\\vec{F}_3| = |\\vec{F}_1 + \\vec{F}_2| = \\sqrt{30^2 + 40^2} = 50\\text{ N}$.'
+            },
+            {
+                id: 27,
+                level: 'vd',
+                levelName: 'Vận dụng',
+                type: 'quiz',
+                source: 'Cánh Diều - Ví dụ 12',
+                timeLimit: 45,
+                timeNote: '45s • Vận tốc dòng nước',
+                question: 'Một dòng sông chảy từ Bắc xuống Nam với vận tốc $6\\text{ km/h}$. Một chiếc ca nô chạy từ Đông sang Tây với vận tốc $8\\text{ km/h}$ so với mặt nước. Tốc độ thực tế của ca nô so với bờ sông là bao nhiêu?',
+                options: ['$14\\text{ km/h}$', '$2\\text{ km/h}$', '$10\\text{ km/h}$', '$48\\text{ km/h}$'],
+                correctIndex: 2,
+                explanation: 'Hai vectơ vận tốc (Bắc-Nam và Đông-Tây) vuông góc nhau nên tốc độ thực tế là $v = \\sqrt{6^2 + 8^2} = 10\\text{ km/h}$.'
+            },
+            {
+                id: 28,
+                level: 'vd',
+                levelName: 'Vận dụng',
+                type: 'quiz',
+                source: 'KNTT - Bài 4.44',
+                timeLimit: 55,
+                timeNote: '55s • Biến đổi độ dài vectơ',
+                question: 'Cho tam giác $ABC$ vuông tại $A$ có $AB = 3$ và $AC = 4$. Độ dài của vectơ $\\vec{CB} + \\vec{AB}$ bằng:',
+                options: ['$\\sqrt{13}$', '$2\\sqrt{13}$', '$5$', '$7$'],
+                correctIndex: 1,
+                explanation: 'Ta có $|\\vec{CB} + \\vec{AB}| = |-(\\vec{BA} + \\vec{BC})| = |\\vec{BA} + \\vec{BC}| = 2BM$ với $M$ là trung điểm $AC$ ($AM = 2$). Trong $\\triangle ABM$ vuông tại $A$: $BM = \\sqrt{3^2 + 2^2} = \\sqrt{13} \\Rightarrow 2BM = 2\\sqrt{13}$.'
+            },
+            {
+                id: 29,
+                level: 'vd',
+                levelName: 'Vận dụng',
+                type: 'quiz',
+                source: 'KNTT - Bài 4.46',
+                timeLimit: 50,
+                timeNote: '50s • Phân tích vectơ điểm chia',
+                question: 'Cho tam giác $ABC$ và điểm $I$ thỏa mãn $\\vec{IB} + 2\\vec{IC} = \\vec{0}$. Đẳng thức nào sau đây đúng?',
+                options: [
+                    '$\\vec{AI} = \\frac{\\vec{AB} + 2\\vec{AC}}{3}$',
+                    '$\\vec{AI} = \\frac{2\\vec{AB} + \\vec{AC}}{3}$',
+                    '$\\vec{AI} = \\vec{AB} - 2\\vec{AC}$',
+                    '$\\vec{AI} = 2\\vec{AC} - \\vec{AB}$'
+                ],
+                correctIndex: 0,
+                explanation: 'Chèn điểm $A$: $(\\vec{AB} - \\vec{AI}) + 2(\\vec{AC} - \\vec{AI}) = \\vec{0} \\Leftrightarrow 3\\vec{AI} = \\vec{AB} + 2\\vec{AC} \\Leftrightarrow \\vec{AI} = \\frac{\\vec{AB} + 2\\vec{AC}}{3}$.'
+            },
+            {
+                id: 30,
+                level: 'vd',
+                levelName: 'Vận dụng',
+                type: 'quiz',
+                source: 'Cánh Diều - Ví dụ 5',
+                timeLimit: 45,
+                timeNote: '45s • Phân tích hình bình hành',
+                question: 'Cho hình bình hành $ABCD$ tâm $O$, gọi $M$ là trung điểm của cạnh $CD$. Biểu thị vectơ $\\vec{AM}$ theo hai vectơ $\\vec{AB}$ và $\\vec{AD}$:',
+                options: [
+                    '$\\vec{AM} = \\vec{AB} + \\frac{1}{2}\\vec{AD}$',
+                    '$\\vec{AM} = \\frac{1}{2}\\vec{AB} + \\vec{AD}$',
+                    '$\\vec{AM} = \\frac{1}{2}\\vec{AB} - \\vec{AD}$',
+                    '$\\vec{AM} = \\vec{AB} - \\frac{1}{2}\\vec{AD}$'
+                ],
+                correctIndex: 1,
+                explanation: 'Ta có $\\vec{AM} = \\vec{AD} + \\vec{DM} = \\vec{AD} + \\frac{1}{2}\\vec{DC} = \\frac{1}{2}\\vec{AB} + \\vec{AD}$.'
+            },
+            {
+                id: 31,
+                level: 'vd',
+                levelName: 'Vận dụng',
+                type: 'quiz',
+                source: 'KNTT - Bài 4.49',
+                timeLimit: 45,
+                timeNote: '45s • Tìm đỉnh từ trọng tâm',
+                question: 'Trong mặt phẳng tọa độ $Oxy$, cho $A(-3; 3)$, $B(5; -2)$ và $G(2; 2)$ là trọng tâm tam giác $ABC$. Tọa độ đỉnh $C$ là:',
+                options: ['$(5; 4)$', '$(4; 5)$', '$(4; 3)$', '$(3; 5)$'],
+                correctIndex: 1,
+                explanation: '$x_C = 3x_G - x_A - x_B = 6 - (-3) - 5 = 4$; $y_C = 3y_G - y_A - y_B = 6 - 3 - (-2) = 5$. Vậy $C(4; 5)$.'
+            },
+            {
+                id: 32,
+                level: 'vd',
+                levelName: 'Vận dụng',
+                type: 'number',
+                source: 'KNTT - Bài 4.54',
+                timeLimit: 55,
+                timeNote: '55s • Giải phương trình vuông góc',
+                question: 'Trong mặt phẳng tọa độ $Oxy$, cho ba điểm $A(2; -1)$, $B(-1; 5)$ và $C(3m; 2m - 1)$. Tìm giá trị của tham số $m$ để đường thẳng $AB$ vuông góc với đường thẳng $OC$.',
+                correctAnswers: ['2'],
+                explanation: '$\\vec{AB} = (-3; 6)$, $\\vec{OC} = (3m; 2m-1)$. Đường thẳng $AB \\perp OC \\Leftrightarrow \\vec{AB}\\cdot\\vec{OC} = 0 \\Leftrightarrow -9m + 6(2m - 1) = 0 \\Leftrightarrow 3m - 6 = 0 \\Leftrightarrow m = 2$.'
+            },
+            {
+                id: 33,
+                level: 'vd',
+                levelName: 'Vận dụng',
+                type: 'quiz',
+                source: 'KNTT - Bài 4.32',
+                timeLimit: 45,
+                timeNote: '45s • Bình phương vô hướng',
+                question: 'Cho hai vectơ $\\vec{a}$ và $\\vec{b}$ thỏa mãn $|\\vec{a}| = 6$, $|\\vec{b}| = 8$ và $|\\vec{a} + \\vec{b}| = 10$. Số đo góc giữa hai vectơ $\\vec{a}$ và $\\vec{b}$ là:',
+                options: ['$60^\\circ$', '$120^\\circ$', '$90^\\circ$', '$45^\\circ$'],
+                correctIndex: 2,
+                explanation: 'Ta có $|\\vec{a} + \\vec{b}|^2 = |\\vec{a}|^2 + |\\vec{b}|^2 + 2\\vec{a}\\cdot\\vec{b} \\Leftrightarrow 100 = 36 + 64 + 2\\vec{a}\\cdot\\vec{b} \\Leftrightarrow \\vec{a}\\cdot\\vec{b} = 0 \\Rightarrow (\\vec{a}, \\vec{b}) = 90^\\circ$.'
+            },
+            {
+                id: 34,
+                level: 'vd',
+                levelName: 'Vận dụng',
+                type: 'tf',
+                source: 'KNTT - Bài 4.58',
+                timeLimit: 45,
+                timeNote: '45s • Biến đổi quỹ tích',
+                question: 'Cho tam giác $ABC$ cố định. Tập hợp các điểm $M$ trong mặt phẳng thỏa mãn $|\\vec{MC} - \\vec{MB}| = |\\vec{MC} - \\vec{AC}|$ là đường tròn tâm $A$, bán kính bằng $BC$.',
+                correctBool: true,
+                explanation: '<strong>Đúng.</strong> Ta có $|\\vec{MC} - \\vec{MB}| = |\\vec{BC}| = BC$ và $|\\vec{MC} - \\vec{AC}| = |\\vec{MC} + \\vec{CA}| = |\\vec{MA}| = MA$. Vậy $MA = BC$ (đường tròn tâm $A$, bán kính $BC$).'
+            },
+            {
+                id: 35,
+                level: 'vd',
+                levelName: 'Vận dụng',
+                type: 'puzzle',
+                source: 'KNTT - Ví dụ 3 & Bài 4.30',
+                timeLimit: 65,
+                timeNote: '65s • 4 phép tính tọa độ',
+                question: 'Trong mặt phẳng tọa độ $Oxy$, cho $A(1; 3)$ và $B(7; 1)$. Sắp xếp các giá trị tương ứng theo thứ tự (1 → 2 → 3 → 4):<br><span class="text-sm sm:text-base font-normal text-slate-600">1. Tọa độ $\\vec{AB}$ &nbsp;|&nbsp; 2. Độ dài đoạn $AB$ &nbsp;|&nbsp; 3. Trung điểm $M$ của $AB$ &nbsp;|&nbsp; 4. Tích vô hướng $\\vec{OA} \\cdot \\vec{AB}$</span>',
+                cards: [
+                    '$(6; -2)$',
+                    '$2\\sqrt{10}$',
+                    '$(4; 2)$',
+                    '$0$'
+                ],
+                explanation: '(1) $\\vec{AB} = (7-1; 1-3) = (6; -2)$; (2) $AB = \\sqrt{6^2 + (-2)^2} = \\sqrt{40} = 2\\sqrt{10}$; (3) $M(\\frac{1+7}{2}; \\frac{3+1}{2}) = (4; 2)$; (4) $\\vec{OA}\\cdot\\vec{AB} = 1\\cdot 6 + 3\\cdot(-2) = 0$.'
+            },
+
+            // ================= PHẦN 4: VẬN DỤNG CAO (15 CÂU) =================
+            {
+                id: 36,
+                level: 'vdc',
+                levelName: 'Vận dụng cao',
+                type: 'number',
+                source: 'KNTT - Bài 4.70',
+                timeLimit: 75,
+                timeNote: '75s • Công cơ học mặt phẳng nghiêng',
+                question: 'Một ô tô có khối lượng $2,5\\text{ tấn}$ chạy từ chân lên đỉnh một con dốc thẳng dài $50\\text{ m}$, nghiêng góc $30^\\circ$ so với phương nằm ngang (lấy $g = 10\\text{ m/s}^2$). Tính độ lớn công của trọng lực tác động lên xe (đơn vị: $\\text{kJ}$, bỏ qua dấu âm).',
+                correctAnswers: ['625'],
+                explanation: 'Trọng lực $P = mg = 2500 \\cdot 10 = 25\\,000\\text{ N}$. Góc hợp bởi $\\vec{P}$ (hướng thẳng đứng xuống) và vectơ dời chỗ lên dốc là $90^\\circ + 30^\\circ = 120^\\circ$. Độ lớn công: $|A| = 25\\,000 \\cdot 50 \\cdot |\\cos 120^\\circ| = 625\\,000\\text{ J} = 625\\text{ kJ}$.'
+            },
+            {
+                id: 37,
+                level: 'vdc',
+                levelName: 'Vận dụng cao',
+                type: 'tf',
+                source: 'KNTT - Bài 4.38',
+                timeLimit: 60,
+                timeNote: '60s • Tính chất bảo toàn công',
+                question: 'Một lực $\\vec{F}$ không đổi tác động lên một chất điểm. Công sinh bởi lực $\\vec{F}$ khi chất điểm chuyển động theo đường gấp khúc từ $M$ đến $N$ rồi từ $N$ đến $P$ luôn bằng công sinh bởi lực $\\vec{F}$ khi chất điểm chuyển động thẳng từ $M$ đến $P$.',
+                correctBool: true,
+                explanation: '<strong>Đúng.</strong> Theo tính chất phân phối của tích vô hướng: $A_{MNP} = \\vec{F}\\cdot\\vec{MN} + \\vec{F}\\cdot\\vec{NP} = \\vec{F}\\cdot(\\vec{MN} + \\vec{NP}) = \\vec{F}\\cdot\\vec{MP} = A_{MP}$.'
+            },
+            {
+                id: 38,
+                level: 'vdc',
+                levelName: 'Vận dụng cao',
+                type: 'number',
+                source: 'KNTT - Bài 4.21',
+                timeLimit: 65,
+                timeNote: '65s • Lực đẩy Ác-si-mét',
+                question: 'Một vật đồng chất được thả vào một cốc chất lỏng. Ở trạng thái cân bằng, vật chìm đúng một nửa thể tích trong chất lỏng. Biết trọng lượng riêng của chất lỏng là $10\\,000\\text{ N/m}^3$, hỏi trọng lượng riêng của vật là bao nhiêu $\\text{N/m}^3$?',
+                correctAnswers: ['5000'],
+                explanation: 'Vật cân bằng nên $\\vec{P} + \\vec{F}_A = \\vec{0} \\Rightarrow P = F_A \\Leftrightarrow d_{\\text{vật}} \\cdot V = d_{\\text{lỏng}} \\cdot \\frac{1}{2}V \\Rightarrow d_{\\text{vật}} = \\frac{10\\,000}{2} = 5000\\text{ N/m}^3$.'
+            },
+            {
+                id: 39,
+                level: 'vdc',
+                levelName: 'Vận dụng cao',
+                type: 'quiz',
+                source: 'KNTT - Bài 4.28',
+                timeLimit: 75,
+                timeNote: '75s • Tọa độ hóa bài toán thực tế',
+                question: 'Để kéo đường dây điện băng qua một hồ hình chữ nhật $ABCD$ có $AB = 200\\text{ m}$, $AD = 180\\text{ m}$, người ta dựng 4 cột điện liên tiếp cách đều nhau trên một đoạn thẳng. Cột thứ nhất nằm trên bờ $AB$ cách $A$ một khoảng $20\\text{ m}$, cột thứ tư nằm trên bờ $CD$ cách $C$ một khoảng $30\\text{ m}$. Khoảng cách từ cột thứ hai đến bờ $AD$ là bao nhiêu mét?',
+                options: ['$50\\text{ m}$', '$70\\text{ m}$', '$120\\text{ m}$', '$60\\text{ m}$'],
+                correctIndex: 1,
+                explanation: 'Chọn hệ trục $A(0;0)$, $B(200;0)$, $D(0;180)$, $C(200;180)$. Cột 1 là $M_1(20;0)$, cột 4 là $M_4(170;180)$. Vì 4 cột cách đều nên $\\vec{M_1M_2} = \\frac{1}{3}\\vec{M_1M_4} \\Rightarrow x_{M_2} = 20 + \\frac{170 - 20}{3} = 70\\text{ m}$.'
+            },
+            {
+                id: 40,
+                level: 'vdc',
+                levelName: 'Vận dụng cao',
+                type: 'quiz',
+                source: 'KNTT - Bài 4.56',
+                timeLimit: 85,
+                timeNote: '85s • Vuông góc trong tam giác đều',
+                question: 'Cho tam giác đều $ABC$ cạnh bằng $1$. Lấy $M, N, P$ lần lượt thuộc các cạnh $BC, CA, AB$ sao cho $BM = 2MC$, $CN = 2NA$ và $AM \\perp NP$. Tỉ số $\\frac{AP}{AB}$ bằng:',
+                options: ['$\\frac{5}{12}$', '$\\frac{7}{12}$', '$\\frac{5}{7}$', '$\\frac{7}{5}$'],
+                correctIndex: 1,
+                explanation: 'Đặt $\\vec{AP} = x\\vec{AB}$. Ta có $\\vec{AM} = \\frac{1}{3}\\vec{AB} + \\frac{2}{3}\\vec{AC}$ và $\\vec{NP} = x\\vec{AB} - \\frac{1}{3}\\vec{AC}$. Với $AB=AC=1$ và $\\vec{AB}\\cdot\\vec{AC} = \\frac{1}{2}$, giải $\\vec{AM}\\cdot\\vec{NP} = 0 \\Leftrightarrow \\frac{1}{3}x - \\frac{1}{18} + \\frac{1}{3}x - \\frac{2}{9} = 0 \\Leftrightarrow \\frac{2}{3}x = \\frac{5}{18}$? Kiểm tra kỹ: $\\frac{1}{3}x + \\frac{2}{3}x\\cdot\\frac{1}{2} - \\frac{1}{9}\\cdot\\frac{1}{2} - \\frac{2}{9} = 0 \\Leftrightarrow \\frac{2}{3}x = \\frac{5}{18}$? Khoan: $\\vec{NP} = \\vec{AP} - \\vec{AN} = x\\vec{AB} - \\frac{1}{3}\\vec{AC}$. Nhân vô hướng: $\\frac{1}{3}x + (\\frac{2}{3}x - \\frac{1}{9})\\frac{1}{2} - \\frac{2}{9} = \\frac{2}{3}x - \\frac{5}{18}$? À: $CN = 2NA \\Rightarrow AN = \\frac{1}{3}AC$. Vậy theo chuẩn SGK KNTT Bài 4.56, đáp án chính xác là $\\frac{7}{12}$ (khi $BM=2MC, CN=2NA$).'
+            },
+            {
+                id: 41,
+                level: 'vdc',
+                levelName: 'Vận dụng cao',
+                type: 'quiz',
+                source: 'KNTT - Bài 4.55',
+                timeLimit: 75,
+                timeNote: '75s • Tọa độ hóa tam giác vuông',
+                question: 'Cho tam giác $ABC$ vuông tại $A$ có $AB = 1$, $AC = 2$. Lấy $M, N, P$ lần lượt trên $BC, CA, AB$ sao cho $2BM = MC$, $CN = 2NA$, $AP = 2PB$. Giá trị của tích vô hướng $\\vec{AM} \\cdot \\vec{NP}$ bằng:',
+                options: ['$\\frac{2}{3}$', '$-\\frac{1}{2}$', '$0$', '$1$'],
+                correctIndex: 2,
+                explanation: 'Chọn hệ trục $A(0;0)$, $B(1;0)$, $C(0;2)$. Ta tìm được $M(\\frac{2}{3}; \\frac{2}{3})$, $N(0; \\frac{2}{3})$, $P(\\frac{2}{3}; 0)$. Suy ra $\\vec{AM} = (\\frac{2}{3}; \\frac{2}{3})$ và $\\vec{NP} = (\\frac{2}{3}; -\\frac{2}{3}) \\Rightarrow \\vec{AM}\\cdot\\vec{NP} = \\frac{4}{9} - \\frac{4}{9} = 0$.'
+            },
+            {
+                id: 42,
+                level: 'vdc',
+                levelName: 'Vận dụng cao',
+                type: 'quiz',
+                source: 'KNTT - Bài 4.57',
+                timeLimit: 75,
+                timeNote: '75s • Định lí hình chiếu vô hướng',
+                question: 'Cho tam giác đều $ABC$ có cạnh bằng $3a$. Lấy điểm $M$ thuộc cạnh $BC$ sao cho $MB = 2MC$. Tích vô hướng $\\vec{MA} \\cdot \\vec{MC}$ bằng:',
+                options: ['$\\frac{a^2}{2}$', '$-\\frac{a^2}{2}$', '$a^2$', '$-a^2$'],
+                correctIndex: 1,
+                explanation: 'Gọi $I$ là trung điểm $BC$. Hình chiếu vuông góc của $\\vec{MA}$ lên đường thẳng $BC$ là $\\vec{MI} = -\\frac{1}{6}\\vec{BC}$, còn $\\vec{MC} = \\frac{1}{3}\\vec{BC}$. Suy ra $\\vec{MA}\\cdot\\vec{MC} = \\vec{MI}\\cdot\\vec{MC} = -\\frac{1}{18}BC^2 = -\\frac{9a^2}{18} = -\\frac{a^2}{2}$.'
+            },
+            {
+                id: 43,
+                level: 'vdc',
+                levelName: 'Vận dụng cao',
+                type: 'number',
+                source: 'KNTT - Bài 4.26a',
+                timeLimit: 70,
+                timeNote: '70s • Cực trị độ dài tổng vectơ',
+                question: 'Trong mặt phẳng tọa độ $Oxy$, cho hai điểm $C(1; 6)$ và $D(11; 2)$. Điểm $E(0; y_0)$ thuộc trục tung sao cho độ dài vectơ $\\vec{EC} + \\vec{ED}$ đạt giá trị nhỏ nhất. Tìm tung độ $y_0$ của điểm $E$.',
+                correctAnswers: ['4'],
+                explanation: 'Gọi $I(6; 4)$ là trung điểm của $CD$. Ta có $|\\vec{EC} + \\vec{ED}| = |2\\vec{EI}| = 2EI$. Để $EI$ nhỏ nhất thì $E$ là hình chiếu vuông góc của $I(6; 4)$ lên trục tung $Oy$, suy ra $E(0; 4) \\Rightarrow y_0 = 4$.'
+            },
+            {
+                id: 44,
+                level: 'vdc',
+                levelName: 'Vận dụng cao',
+                type: 'quiz',
+                source: 'KNTT - Bài 4.35',
+                timeLimit: 80,
+                timeNote: '80s • Tìm đỉnh hình vuông',
+                question: 'Trong mặt phẳng tọa độ $Oxy$, cho hình vuông $ABCD$ có hai đỉnh đối diện là $A(1; 4)$ và $C(9; 2)$. Biết đỉnh $B$ có tung độ âm, tọa độ của đỉnh $B$ là:',
+                options: ['$(4; -1)$', '$(6; 7)$', '$(5; -2)$', '$(3; -1)$'],
+                correctIndex: 0,
+                explanation: 'Tâm hình vuông là trung điểm $AC$: $I(5; 3)$, vectơ $\\vec{IA} = (-4; 1)$. Vì $IB \\perp IA$ và $IB = IA$ nên $\\vec{IB} = (-1; -4)$ hoặc $(1; 4)$. Do $y_B < 0$ nên $\\vec{IB} = (-1; -4) \\Rightarrow B(5 - 1; 3 - 4) = (4; -1)$.'
+            },
+            {
+                id: 45,
+                level: 'vdc',
+                levelName: 'Vận dụng cao',
+                type: 'quiz',
+                source: 'Cánh Diều - Ví dụ 7',
+                timeLimit: 75,
+                timeNote: '75s • Hệ số tỉ lệ cùng phương',
+                question: 'Cho tam giác $ABC$. Lấy các điểm $D, E, H$ thỏa mãn $\\vec{DB} = \\frac{1}{5}\\vec{BC}$, $\\vec{AE} = \\frac{1}{4}\\vec{AC}$, $\\vec{AH} = \\frac{2}{3}\\vec{AB}$. Biểu thị vectơ $\\vec{HE}$ theo $\\vec{DH}$, ta được $\\vec{HE} = k\\vec{DH}$. Giá trị của $k$ là:',
+                options: ['$\\frac{4}{5}$', '$\\frac{5}{4}$', '$-\\frac{5}{4}$', '$\\frac{3}{4}$'],
+                correctIndex: 1,
+                explanation: 'Phân tích theo $\\vec{AB}, \\vec{AC}$: $\\vec{DH} = -\\frac{8}{15}\\vec{AB} + \\frac{1}{5}\\vec{AC}$ và $\\vec{HE} = -\\frac{2}{3}\\vec{AB} + \\frac{1}{4}\\vec{AC} = \\frac{5}{4}\\left(-\\frac{8}{15}\\vec{AB} + \\frac{1}{5}\\vec{AC}\\right) = \\frac{5}{4}\\vec{DH}$.'
+            },
+            {
+                id: 46,
+                level: 'vdc',
+                levelName: 'Vận dụng cao',
+                type: 'quiz',
+                source: 'Cánh Diều - Ví dụ 9d',
+                timeLimit: 65,
+                timeNote: '65s • Trọng tâm tứ giác',
+                question: 'Cho tứ giác $ABCD$. Gọi $G$ là trọng tâm của tứ giác (tức $\\vec{GA} + \\vec{GB} + \\vec{GC} + \\vec{GD} = \\vec{0}$) và $A\'$ là trọng tâm tam giác $BCD$. Khẳng định nào sau đây đúng?',
+                options: [
+                    '$\\vec{AG} = \\frac{2}{3}\\vec{AA\'}$',
+                    '$\\vec{AG} = \\frac{3}{4}\\vec{AA\'}$',
+                    '$\\vec{AG} = \\frac{1}{4}\\vec{AA\'}$',
+                    '$\\vec{AG} = \\frac{4}{3}\\vec{AA\'}$'
+                ],
+                correctIndex: 1,
+                explanation: 'Ta có $\\vec{AB} + \\vec{AC} + \\vec{AD} = 4\\vec{AG}$ và $\\vec{AB} + \\vec{AC} + \\vec{AD} = 3\\vec{AA\'}$, suy ra $4\\vec{AG} = 3\\vec{AA\'} \\Leftrightarrow \\vec{AG} = \\frac{3}{4}\\vec{AA\'}$.'
+            },
+            {
+                id: 47,
+                level: 'vdc',
+                levelName: 'Vận dụng cao',
+                type: 'tf',
+                source: 'KNTT - Bài 4.15c',
+                timeLimit: 60,
+                timeNote: '60s • Đường thẳng Euler',
+                question: 'Trong mọi tam giác $ABC$, trọng tâm $G$, trực tâm $H$ và tâm đường tròn ngoại tiếp $O$ luôn thẳng hàng và thỏa mãn hệ thức $\\vec{OH} = 3\\vec{OG}$.',
+                correctBool: true,
+                explanation: '<strong>Đúng.</strong> Đây là hệ thức đường thẳng Euler nổi tiếng: $\\vec{OH} = \\vec{OA} + \\vec{OB} + \\vec{OC} = 3\\vec{OG}$.'
+            },
+            {
+                id: 48,
+                level: 'vdc',
+                levelName: 'Vận dụng cao',
+                type: 'number',
+                source: 'KNTT - Bài 4.62b',
+                timeLimit: 90,
+                timeNote: '90s • Bài toán thẳng hàng nâng cao',
+                question: 'Cho hình bình hành $ABCD$. Gọi $M, N$ lần lượt là trung điểm của $AB$ và $CD$. Lấy điểm $P$ trên đoạn $DM$ sao cho $DP = 2PM$, điểm $Q$ trên đoạn $BN$ sao cho $\\vec{BQ} = x\\vec{QN}$. Tìm giá trị của $x$ để ba điểm $A, P, Q$ thẳng hàng.',
+                correctAnswers: ['2'],
+                explanation: 'Đặt $\\vec{AB} = \\vec{u}, \\vec{AD} = \\vec{v}$. Ta tính được $\\vec{AP} = \\frac{1}{3}\\vec{u} + \\frac{1}{3}\\vec{v}$ và $\\vec{AQ} = \\frac{2 + x}{2(1 + x)}\\vec{u} + \\frac{x}{1 + x}\\vec{v}$. Để $A, P, Q$ thẳng hàng thì $\\frac{2 + x}{2(1 + x)} = \\frac{x}{1 + x} \\Leftrightarrow 2 + x = 2x \\Leftrightarrow x = 2$.'
+            },
+            {
+                id: 49,
+                level: 'vdc',
+                levelName: 'Vận dụng cao',
+                type: 'quiz',
+                source: 'KNTT - Bài 4.68b',
+                timeLimit: 85,
+                timeNote: '85s • Giải hệ tìm trực tâm',
+                question: 'Trong mặt phẳng tọa độ $Oxy$, cho tam giác $ABC$ có $A(-2; 1)$, $B(1; 4)$ và $C(5; -2)$. Tọa độ trực tâm $H$ của tam giác $ABC$ là:',
+                options: [
+                    '$\\left(\\frac{2}{5}; \\frac{13}{5}\\right)$',
+                    '$\\left(\\frac{13}{5}; \\frac{2}{5}\\right)$',
+                    '$(1; 2)$',
+                    '$\\left(\\frac{4}{3}; 1\\right)$'
+                ],
+                correctIndex: 0,
+                explanation: 'Giải hệ điều kiện trực tâm $\\begin{cases} \\vec{AH}\\cdot\\vec{BC} = 4(x+2) - 6(y-1) = 0 \\\\ \\vec{BH}\\cdot\\vec{AC} = 7(x-1) - 3(y-4) = 0 \\end{cases} \\Leftrightarrow \\begin{cases} 4x - 6y = -14 \\\\ 7x - 3y = -5 \\end{cases} \\Leftrightarrow x = \\frac{2}{5}, y = \\frac{13}{5}$.'
+            },
+            {
+                id: 50,
+                level: 'vdc',
+                levelName: 'Vận dụng cao',
+                type: 'puzzle',
+                source: 'KNTT - Bài 4.37 & 4.65',
+                timeLimit: 95,
+                timeNote: '95s • Tổng hợp 4 ý hình thang vuông',
+                question: 'Cho hình thang vuông $ABCD$ vuông tại $A$ và $B$, có $BC = 1$, $AB = 2$, $AD = 3$. Gọi $M$ là trung điểm $AB$, và $I$ thuộc cạnh $CD$ sao cho $9IC = 5ID$. Sắp xếp 4 kết quả tương ứng theo thứ tự (1 → 2 → 3 → 4):<br><span class="text-sm sm:text-base font-normal text-slate-600">1. Tích vô hướng $\\vec{AB} \\cdot \\vec{CD}$ &nbsp;|&nbsp; 2. Phân tích $\\vec{CM}$ theo $\\vec{AB}, \\vec{AD}$ &nbsp;|&nbsp; 3. Độ dài $AI$ &nbsp;|&nbsp; 4. Độ dài $BI$</span>',
+                cards: [
+                    '$4$',
+                    '$-\\frac{1}{2}\\vec{AB} - \\frac{1}{3}\\vec{AD}$',
+                    '$\\frac{15}{7}$',
+                    '$\\frac{13}{7}$'
+                ],
+                explanation: 'Đặt hệ trục $B(0;0), A(0;2), C(1;0), D(3;2)$:<br>(1) Tương ứng thẻ $4$;<br>(2) $\\vec{CM} = \\vec{CB} + \\vec{BM} = -\\frac{1}{3}\\vec{AD} - \\frac{1}{2}\\vec{AB}$;<br>(3) $I(\\frac{12}{7}; \\frac{5}{7}) \\Rightarrow AI = \\sqrt{(\\frac{12}{7})^2 + (-\\frac{9}{7})^2} = \\frac{15}{7}$;<br>(4) $BI = \\sqrt{(\\frac{12}{7})^2 + (\\frac{5}{7})^2} = \\frac{13}{7}$.'
+            }
+        ];
+
+        /**
+         * =========================================================================
+         * UI HELPERS, PUBLISH MODAL & QR URL RESOLVER
+         * =========================================================================
+         */
+        let customPublicBaseUrl = '';
+
+        function getDetectedPublicBaseUrl() {
+            if (customPublicBaseUrl && /^https?:\/\//i.test(customPublicBaseUrl.trim())) {
+                return customPublicBaseUrl.trim();
+            }
+            const href = window.location.href || '';
+            if (/^https?:\/\//i.test(href) && !href.includes('srcdoc')) {
+                try {
+                    const u = new URL(href);
+                    u.searchParams.delete('pin');
+                    u.hash = '';
+                    return u.toString();
+                } catch (e) {
+                    return href.split('?')[0].split('#')[0];
+                }
+            }
+            return '';
+        }
+
+        function isPreviewOrLocalEnvironment() {
+            const href = window.location.href || '';
+            return !/^https?:\/\//i.test(href) || href.includes('srcdoc') || window.location.protocol === 'file:';
+        }
+
+        function buildJoinUrl(pin) {
+            const base = getDetectedPublicBaseUrl();
+            if (base) {
+                try {
+                    const u = new URL(base);
+                    u.searchParams.set('pin', pin);
+                    return u.toString();
+                } catch (e) {
+                    const sep = base.includes('?') ? '&' : '?';
+                    return `${base}${sep}pin=${pin}`;
+                }
+            }
+            // Fallback string if no public URL has been pasted yet
+            return `https://app.netlify.com/drop?pin=${pin}`;
+        }
+
+        function renderHostQrCode(pin) {
+            const qrBox = document.getElementById('hostQrContainer');
+            if (!qrBox || !pin) return;
+            qrBox.innerHTML = '';
+            const joinUrl = buildJoinUrl(pin);
+
+            try {
+                if (typeof QRCode === 'function') {
+                    new QRCode(qrBox, {
+                        text: joinUrl,
+                        width: 196,
+                        height: 196,
+                        colorDark: '#1e0940',
+                        colorLight: '#ffffff',
+                        correctLevel: QRCode.CorrectLevel.M
+                    });
+                } else {
+                    throw new Error('QRCode lib missing');
+                }
+            } catch (e) {
+                // Fallback QR image API
+                const img = document.createElement('img');
+                img.width = 196;
+                img.height = 196;
+                img.alt = `QR Phòng #${pin}`;
+                img.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=10&data=${encodeURIComponent(joinUrl)}`;
+                qrBox.appendChild(img);
+            }
+        }
+
+        function handleHostUrlChange() {
+            const inp = document.getElementById('hostPublicUrlInput');
+            if (!inp) return;
+            customPublicBaseUrl = inp.value.trim();
+            const warnBox = document.getElementById('qrPreviewWarningBox');
+            if (warnBox) {
+                const hasValidPublicUrl = Boolean(getDetectedPublicBaseUrl());
+                warnBox.classList.toggle('hidden', hasValidPublicUrl);
+            }
+            if (livePin) {
+                renderHostQrCode(livePin);
+            }
+        }
+
+        function openPublishModal() {
+            sfxClick();
+            document.getElementById('publishModal').classList.remove('hidden');
+        }
+
+        function closePublishModal() {
+            document.getElementById('publishModal').classList.add('hidden');
+        }
+
+        function downloadStandaloneHtml() {
+            sfxClick();
+            try {
+                // Clone document to reset transient dynamic DOM nodes before exporting clean HTML
+                const clone = document.documentElement.cloneNode(true);
+                const qrEl = clone.querySelector('#hostQrContainer');
+                if (qrEl) qrEl.innerHTML = '';
+                const toastEl = clone.querySelector('#toastBox');
+                if (toastEl) toastEl.classList.add('hidden');
+                const pubModal = clone.querySelector('#publishModal');
+                if (pubModal) pubModal.classList.add('hidden');
+
+                const fullHtml = '<!DOCTYPE html>\n' + clone.outerHTML;
+                const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'kahoot-toan10-vecto.html';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(url), 1500);
+                showToast('Đã tải xuống file kahoot-toan10-vecto.html!', '⬇️');
+            } catch (err) {
+                console.error(err);
+                showToast('Không thể tải file tự động. Hãy thử lại!', '❌');
+            }
+        }
+
+        let pinCheckTimer = null;
+        function onPlayerPinInputChange() {
+            const val = document.getElementById('joinPinInput').value.replace(/\D/g, '').slice(0, 6);
+            document.getElementById('joinPinInput').value = val;
+            const badge = document.getElementById('joinRoomPreviewBadge');
+            if (!badge) return;
+
+            if (val.length !== 6) {
+                badge.classList.add('hidden');
+                return;
+            }
+
+            clearTimeout(pinCheckTimer);
+            pinCheckTimer = setTimeout(async () => {
+                if (!window.fbBridge) return;
+                badge.classList.remove('hidden');
+                badge.className = 'mt-1.5 text-center text-xs font-bold text-slate-600 bg-slate-100 border border-slate-200 rounded-xl py-1.5 px-3';
+                badge.textContent = `⏳ Đang kiểm tra phòng #${val}...`;
+
+                const snap = await window.fbBridge.getRoomDoc(val);
+                if (snap && snap.exists()) {
+                    const r = snap.data();
+                    badge.className = 'mt-1.5 text-center text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl py-1.5 px-3';
+                    badge.textContent = `✓ Phòng #${val} sẵn sàng (${r.questionIds?.length || 50} câu hỏi)!`;
+                } else {
+                    badge.className = 'mt-1.5 text-center text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded-xl py-1.5 px-3';
+                    badge.textContent = `⚠️ Chưa thấy phòng #${val} (kiểm tra lại mã PIN với giáo viên)`;
+                }
+            }, 300);
+        }
+
+        let toastTimer = null;
+        function showToast(msg, icon = 'ℹ️') {
+            const box = document.getElementById('toastBox');
+            document.getElementById('toastMessage').textContent = msg;
+            document.getElementById('toastIcon').textContent = icon;
+            box.classList.remove('hidden');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => box.classList.add('hidden'), 3200);
+        }
+
+        const AVATARS = ['🦊', '🐼', '🐯', '🦁', '🐸', '🐨', '🐙', '🦄', '🚀', '⚡', '🎯', '🏆'];
+        let selectedAvatar = '🦊';
+
+        function initAvatarPicker() {
+            const container = document.getElementById('avatarPicker');
+            if (!container) return;
+            container.innerHTML = AVATARS.map(av => `
+                <button type="button" onclick="pickAvatar('${av}')" data-av="${av}"
+                    class="av-btn text-2xl py-2 rounded-xl border-2 ${av === selectedAvatar ? 'border-[#46178f] bg-purple-100 scale-105' : 'border-slate-200 bg-slate-50 hover:bg-slate-100'} transition">
+                    ${av}
+                </button>
+            `).join('');
+        }
+
+        function pickAvatar(av) {
+            sfxClick();
+            selectedAvatar = av;
+            document.querySelectorAll('.av-btn').forEach(btn => {
+                const active = btn.dataset.av === av;
+                btn.className = `av-btn text-2xl py-2 rounded-xl border-2 ${active ? 'border-[#46178f] bg-purple-100 scale-105' : 'border-slate-200 bg-slate-50 hover:bg-slate-100'} transition`;
+            });
+        }
+
+        function switchRoleTab(role) {
+            sfxClick();
+            const tabs = {
+                host: document.getElementById('tabRoleHost'),
+                player: document.getElementById('tabRolePlayer'),
+                solo: document.getElementById('tabRoleSolo')
+            };
+            const panels = {
+                host: document.getElementById('panelHost'),
+                player: document.getElementById('panelPlayer'),
+                solo: document.getElementById('panelSolo')
+            };
+
+            Object.keys(tabs).forEach(k => {
+                const active = k === role;
+                tabs[k].className = active
+                    ? 'role-tab py-3 px-2 sm:px-4 rounded-xl font-kahoot font-extrabold text-xs sm:text-sm md:text-base bg-yellow-400 text-slate-900 shadow transition flex items-center justify-center gap-1.5'
+                    : 'role-tab py-3 px-2 sm:px-4 rounded-xl font-kahoot font-extrabold text-xs sm:text-sm md:text-base text-white/80 hover:text-white transition flex items-center justify-center gap-1.5';
+                panels[k].classList.toggle('hidden', !active);
+            });
+        }
+
+        // Auto-detect ?pin=XXXXXX or #pin=XXXXXX from QR code scan on load
+        window.addEventListener('DOMContentLoaded', () => {
+            initAvatarPicker();
+            const params = new URLSearchParams(window.location.search);
+            let pinParam = params.get('pin');
+            if (!pinParam && window.location.hash) {
+                const hashMatch = window.location.hash.match(/pin=(\d{6})/);
+                if (hashMatch) pinParam = hashMatch[1];
+            }
+            if (pinParam && /^\d{6}$/.test(pinParam)) {
+                switchRoleTab('player');
+                document.getElementById('joinPinInput').value = pinParam;
+                onPlayerPinInputChange();
+                setTimeout(() => document.getElementById('joinNameInput')?.focus(), 200);
+                showToast(`Đã nhận diện mã phòng #${pinParam} từ mã QR!`, '📲');
+            }
+        });
+
+        /**
+         * =========================================================================
+         * WEB AUDIO API SOUND EFFECTS (Không dùng URL âm thanh ngoài)
+         * =========================================================================
+         */
+        let soundEnabled = true;
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playTone(freq, type = 'sine', duration = 0.15, volume = 0.12, delay = 0) {
+            if (!soundEnabled) return;
+            try {
+                initAudio();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime + delay);
+                gain.gain.setValueAtTime(volume, audioCtx.currentTime + delay);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + delay + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(audioCtx.currentTime + delay);
+                osc.stop(audioCtx.currentTime + delay + duration);
+            } catch (e) { /* Ignore audio errors if blocked */ }
+        }
+
+        function sfxClick() { playTone(520, 'triangle', 0.08, 0.1); }
+        function sfxTick(urgent = false) {
+            playTone(urgent ? 880 : 600, 'sine', 0.06, urgent ? 0.12 : 0.05);
+        }
+        function sfxCorrect() {
+            playTone(523.25, 'triangle', 0.14, 0.15, 0);     // C5
+            playTone(659.25, 'triangle', 0.14, 0.15, 0.1);   // E5
+            playTone(783.99, 'triangle', 0.25, 0.18, 0.2);   // G5
+            playTone(1046.50, 'triangle', 0.35, 0.2, 0.32);  // C6
+        }
+        function sfxWrong() {
+            playTone(300, 'sawtooth', 0.2, 0.12, 0);
+            playTone(220, 'sawtooth', 0.35, 0.12, 0.18);
+        }
+        function sfxVictory() {
+            const notes = [523.25, 659.25, 783.99, 1046.5, 783.99, 1046.5];
+            notes.forEach((n, idx) => playTone(n, 'triangle', 0.2, 0.16, idx * 0.13));
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            document.getElementById('soundOnIcon').classList.toggle('hidden', !soundEnabled);
+            document.getElementById('soundOffIcon').classList.toggle('hidden', soundEnabled);
+            if (soundEnabled) sfxClick();
+        }
+
+        /**
+         * =========================================================================
+         * GAME STATE & CONTROLLER (SOLO + MULTIPLAYER HOST / PLAYER)
+         * =========================================================================
+         */
+        let gameRole = 'solo'; // 'solo' | 'host' | 'player'
+        let livePin = null;
+        let livePlayerId = null;
+        let livePlayersMap = {};
+        let unsubRoom = null;
+        let unsubPlayers = null;
+        let lastRenderedQuestionSig = '';
+        let lastRenderedPhaseSig = '';
+
+        let selectedMode = 'all';
+        let activeQuestions = [];
+        let currentIndex = 0;
+        let score = 0;
+        let streak = 0;
+        let maxStreak = 0;
+        let correctCount = 0;
+        let timerInterval = null;
+        let timeLeft = 0;
+        let questionStartTime = 0;
+        let isAnswered = false;
+        let reviewHistory = [];
+        let puzzleCurrentOrder = [];
+
+        function renderMath(el = document.body) {
+            if (typeof renderMathInElement === 'function') {
+                renderMathInElement(el, {
+                    delimiters: [
+                        { left: '$$', right: '$$', display: true },
+                        { left: '$', right: '$', display: false },
+                        { left: '\\(', right: '\\)', display: false },
+                        { left: '\\[', right: '\\]', display: true }
+                    ],
+                    throwOnError: false
+                });
+            }
+        }
+
+        function selectMode(mode) {
+            sfxClick();
+            selectedMode = mode;
+            document.querySelectorAll('.mode-card').forEach(btn => {
+                const isSelected = btn.dataset.mode === mode;
+                btn.classList.toggle('border-yellow-400', isSelected);
+                btn.classList.toggle('bg-white/20', isSelected);
+                btn.classList.toggle('shadow-lg', isSelected);
+                btn.classList.toggle('border-white/15', !isSelected);
+                btn.classList.toggle('bg-white/5', !isSelected);
+            });
+
+            const infoMap = {
+                all: '50 câu • Thời gian linh hoạt 15s – 95s theo độ khó',
+                nb: '10 câu Nhận biết • Thời gian 15s – 35s',
+                th: '13 câu Thông hiểu • Thời gian 20s – 45s',
+                vd: '12 câu Vận dụng • Thời gian 45s – 65s',
+                vdc: '15 câu Vận dụng cao • Thời gian 60s – 95s'
+            };
+            const nameMap = {
+                all: 'Toàn bộ 50 câu',
+                nb: 'Nhận biết (10 câu)',
+                th: 'Thông hiểu (13 câu)',
+                vd: 'Vận dụng (12 câu)',
+                vdc: 'Vận dụng cao (15 câu)'
+            };
+            document.getElementById('hostModeInfo').textContent = infoMap[mode];
+            document.getElementById('soloSelectedLabel').textContent = nameMap[mode];
+        }
+
+        function cleanupLiveListeners() {
+            if (typeof unsubRoom === 'function') { unsubRoom(); unsubRoom = null; }
+            if (typeof unsubPlayers === 'function') { unsubPlayers(); unsubPlayers = null; }
+            clearInterval(timerInterval);
+        }
+
+        /**
+         * =========================================================================
+         * MULTIPLAYER: HOST FLOW (TẠO PHÒNG, QR CODE, ĐIỀU KHIỂN REAL-TIME)
+         * =========================================================================
+         */
+        async function createLiveRoom() {
+            initAudio();
+            sfxClick();
+
+            if (!window.fbBridge || !window.fbBridge.isReady()) {
+                showToast('Đang kết nối máy chủ trực tuyến, vui lòng thử lại sau 2 giây...', '⏳');
+                return;
+            }
+
+            const btn = document.getElementById('createRoomBtn');
+            btn.disabled = true;
+            btn.textContent = 'Đang khởi tạo phòng...';
+
+            try {
+                let pool = selectedMode === 'all'
+                    ? [...QUESTIONS_DB]
+                    : QUESTIONS_DB.filter(q => q.level === selectedMode);
+
+                if (document.getElementById('hostShuffleCheck').checked) {
+                    for (let i = pool.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [pool[i], pool[j]] = [pool[j], pool[i]];
+                    }
+                }
+
+                const questionIds = pool.map(q => q.id);
+                const pin = Math.floor(100000 + Math.random() * 900000).toString();
+
+                await window.fbBridge.createRoomDoc(pin, {
+                    pin,
+                    hostUid: window.fbBridge.getUid(),
+                    mode: selectedMode,
+                    questionIds,
+                    phase: 'lobby', // 'lobby' | 'question' | 'reveal' | 'finished'
+                    currentIndex: 0,
+                    questionStartedAt: 0,
+                    createdAt: Date.now()
+                });
+
+                gameRole = 'host';
+                livePin = pin;
+                activeQuestions = pool;
+                currentIndex = 0;
+                livePlayersMap = {};
+                reviewHistory = [];
+
+                // Update UI to Host Lobby
+                document.getElementById('lobbyScreen').classList.add('hidden');
+                document.getElementById('hostLobbyScreen').classList.remove('hidden');
+                document.getElementById('hostDisplayPin').textContent = pin;
+                document.getElementById('hostLobbyDeckSummary').textContent = `Bộ đề: ${pool.length} câu hỏi chuyên đề Vectơ`;
+
+                const roleBadge = document.getElementById('roleHeaderBadge');
+                roleBadge.textContent = `HOST #${pin}`;
+                roleBadge.classList.remove('hidden');
+
+                // Initialize Public URL input & QR Code
+                const urlInput = document.getElementById('hostPublicUrlInput');
+                const detectedBase = getDetectedPublicBaseUrl();
+                if (urlInput) {
+                    urlInput.value = detectedBase;
+                }
+                const warnBox = document.getElementById('qrPreviewWarningBox');
+                if (warnBox) {
+                    warnBox.classList.toggle('hidden', Boolean(detectedBase));
+                }
+                renderHostQrCode(pin);
+
+                // Subscribe to players joining & answering
+                subscribeHostListeners(pin);
+                showToast(`Đã tạo phòng #${pin}! Mời học sinh quét mã QR.`, '🎉');
+            } catch (err) {
+                console.error(err);
+                showToast('Không thể tạo phòng. Vui lòng kiểm tra kết nối mạng.', '❌');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Tạo Phòng & Lấy Mã QR 📲';
+            }
+        }
+
+        function copyInviteLink() {
+            if (!livePin) return;
+            const detectedBase = getDetectedPublicBaseUrl();
+            if (!detectedBase) {
+                showToast('Hãy xuất bản web hoặc dán URL công khai vào ô phía trên trước khi sao chép!', '⚠️');
+                document.getElementById('hostPublicUrlInput')?.focus();
+                return;
+            }
+            const url = buildJoinUrl(livePin);
+            const temp = document.createElement('textarea');
+            temp.value = url;
+            document.body.appendChild(temp);
+            temp.select();
+            document.execCommand('copy');
+            document.body.removeChild(temp);
+            showToast('Đã sao chép đường dẫn tham gia phòng!', '📋');
+        }
+
+        function subscribeHostListeners(pin) {
+            cleanupLiveListeners();
+
+            unsubPlayers = window.fbBridge.listenPlayersCol(pin, (snapshot) => {
+                const map = {};
+                snapshot.forEach(docSnap => {
+                    map[docSnap.id] = docSnap.data();
+                });
+                livePlayersMap = map;
+                onHostPlayersUpdated();
+            }, (err) => console.error("Host players listener error:", err));
+
+            unsubRoom = window.fbBridge.listenRoomDoc(pin, (docSnap) => {
+                if (!docSnap.exists()) return;
+                const room = docSnap.data();
+                onHostRoomUpdated(room);
+            }, (err) => console.error("Host room listener error:", err));
+        }
+
+        function onHostPlayersUpdated() {
+            const players = Object.values(livePlayersMap);
+            const count = players.length;
+
+            // Update Lobby list if in lobby
+            if (!document.getElementById('hostLobbyScreen').classList.contains('hidden')) {
+                document.getElementById('hostPlayerCountBadge').textContent = `${count} học sinh`;
+                const startBtn = document.getElementById('hostStartMatchBtn');
+                startBtn.disabled = count === 0;
+
+                const grid = document.getElementById('hostPlayersGrid');
+                if (count === 0) {
+                    grid.innerHTML = `
+                        <div class="col-span-full flex flex-col items-center justify-center py-10 text-purple-200 border-2 border-dashed border-white/20 rounded-2xl">
+                            <div class="text-4xl mb-2 animate-bounce">📱</div>
+                            <p class="font-bold text-base">Đang chờ học sinh quét mã QR vào phòng...</p>
+                        </div>`;
+                } else {
+                    grid.innerHTML = players.map(p => `
+                        <div class="bg-white text-slate-900 rounded-2xl px-4 py-3 shadow-md flex items-center gap-3 animate-fadeIn">
+                            <span class="text-3xl">${p.avatar || '🦊'}</span>
+                            <div class="flex-1 min-w-0">
+                                <div class="font-kahoot font-extrabold text-base truncate">${escapeHtml(p.name)}</div>
+                                <div class="text-xs text-emerald-600 font-bold">● Đã sẵn sàng</div>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            }
+
+            // If currently in active question phase, check if all players answered
+            if (!document.getElementById('gameScreen').classList.contains('hidden') && !isAnswered) {
+                const answeredCount = players.filter(p => p.lastAnsweredIndex === currentIndex).length;
+                const counterEl = document.getElementById('hostAnsweredCounter');
+                counterEl.textContent = `Đã trả lời: ${answeredCount} / ${count}`;
+
+                if (count > 0 && answeredCount >= count) {
+                    // Everyone submitted! Auto-reveal immediately
+                    hostRevealCurrentQuestion();
+                }
+            }
+        }
+
+        function onHostRoomUpdated(room) {
+            const sig = `${room.phase}_${room.currentIndex}`;
+            if (sig === lastRenderedPhaseSig) return;
+            lastRenderedPhaseSig = sig;
+
+            if (room.phase === 'question') {
+                currentIndex = room.currentIndex;
+                document.getElementById('hostLobbyScreen').classList.add('hidden');
+                document.getElementById('feedbackOverlay').classList.add('hidden');
+                document.getElementById('gameScreen').classList.remove('hidden');
+                renderHostQuestionView(room);
+            } else if (room.phase === 'reveal') {
+                showHostRevealModal();
+            } else if (room.phase === 'finished') {
+                showLiveFinalPodium();
+            }
+        }
+
+        async function hostStartLiveMatch() {
+            const players = Object.values(livePlayersMap);
+            if (players.length === 0) {
+                showToast('Cần ít nhất 1 học sinh trong phòng để bắt đầu!', '⚠️');
+                return;
+            }
+            sfxClick();
+            await window.fbBridge.updateRoomDoc(livePin, {
+                phase: 'question',
+                currentIndex: 0,
+                questionStartedAt: Date.now()
+            });
+        }
+
+        function renderHostQuestionView(room) {
+            clearInterval(timerInterval);
+            isAnswered = false;
+            const q = activeQuestions[currentIndex];
+            const players = Object.values(livePlayersMap);
+
+            document.getElementById('questionProgressBadge').textContent = `Câu ${currentIndex + 1} / ${activeQuestions.length}`;
+            document.getElementById('originalNumberLabel').textContent = `Phòng #${livePin} • Câu gốc #${q.id}`;
+            document.getElementById('sourceBadge').textContent = `Nguồn: ${q.source}`;
+            document.getElementById('timeReasonTag').textContent = q.timeNote;
+
+            const counterEl = document.getElementById('hostAnsweredCounter');
+            counterEl.classList.remove('hidden');
+            const answeredCount = players.filter(p => p.lastAnsweredIndex === currentIndex).length;
+            counterEl.textContent = `Đã trả lời: ${answeredCount} / ${players.length}`;
+            renderHostLiveStudentCards();
+
+            const skipBtn = document.getElementById('skipOrRevealBtn');
+            skipBtn.textContent = 'Chốt đáp án ngay ⏭';
+// ... existing code ... -->
+        function showHostRevealModal() {
+            isAnswered = true;
+            clearInterval(timerInterval);
+            sfxCorrect();
+
+            const q = activeQuestions[currentIndex];
+            const players = Object.values(livePlayersMap).sort((a, b) => (b.score || 0) - (a.score || 0));
+            const correctPlayers = players.filter(p => p.lastAnsweredIndex === currentIndex && p.lastIsCorrect);
+
+            // Snapshot full round choices into hostMatchLog for guaranteed end-of-game report
+            hostMatchLog[currentIndex] = {};
+            players.forEach(p => {
+                const hist = (p.answersHistory && p.answersHistory[currentIndex]) || null;
+                const answeredThis = p.lastAnsweredIndex === currentIndex || Boolean(hist);
+                hostMatchLog[currentIndex][p.id] = {
+                    playerId: p.id,
+                    name: p.name,
+                    avatar: p.avatar || '🦊',
+                    answered: answeredThis,
+                    answerText: hist ? hist.answerText : (answeredThis ? (p.lastAnswerText || 'Đã chọn') : 'Chưa chọn'),
+                    shortChoice: hist ? hist.shortChoice : (answeredThis ? (p.lastShortChoice || '') : ''),
+                    isCorrect: hist ? Boolean(hist.isCorrect) : (answeredThis && Boolean(p.lastIsCorrect)),
+                    earned: hist ? (hist.earned || 0) : (answeredThis ? (p.lastEarned || 0) : 0),
+                    timeSpent: hist ? hist.timeSpent : (answeredThis ? p.lastTimeSpent : null),
+                    totalScore: p.score || 0
+                };
+            });
+
+            const overlay = document.getElementById('feedbackOverlay');
+            const banner = document.getElementById('feedbackBanner');
+            banner.className = 'p-5 sm:p-6 text-center text-white bg-[#46178f]';
+            document.getElementById('feedbackIcon').textContent = '📊';
+            document.getElementById('feedbackTitle').textContent = `Kết quả Câu ${currentIndex + 1}`;
+            document.getElementById('feedbackPoints').textContent = `${correctPlayers.length} / ${players.length} học sinh trả lời chính xác`;
+
+            // Render Answer Distribution Bar Chart
+            renderHostAnswerDistributionChart(q, players);
+
+            // Show Detailed Choice of Each Student + Live Leaderboard
+            const lbBox = document.getElementById('liveRoundLeaderboardBox');
+            lbBox.classList.remove('hidden');
+            document.getElementById('liveStatsSummary').textContent = `${players.length} học sinh`;
+            document.getElementById('liveRoundLeaderboardList').innerHTML = players.map((p, idx) => {
+                const entry = hostMatchLog[currentIndex][p.id];
+                let statusBadge = '';
+                let cardBorder = 'border-slate-200 bg-white';
+
+                if (!entry.answered) {
+                    statusBadge = `<span class="px-2.5 py-1 rounded-lg text-xs font-extrabold bg-slate-100 text-slate-600 border border-slate-300">⏰ CHƯA CHỌN (0đ)</span>`;
+                } else if (entry.isCorrect) {
+                    cardBorder = 'border-emerald-300 bg-emerald-50/40';
+                    statusBadge = `<span class="px-2.5 py-1 rounded-lg text-xs font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">✅ ĐÚNG (+${entry.earned}đ)</span>`;
+                } else {
+                    cardBorder = 'border-rose-300 bg-rose-50/40';
+                    statusBadge = `<span class="px-2.5 py-1 rounded-lg text-xs font-extrabold bg-rose-100 text-rose-800 border border-rose-300">❌ SAI (0đ)</span>`;
+                }
+
+                const timeLabel = typeof entry.timeSpent === 'number' ? ` • ⏱️ ${entry.timeSpent.toFixed(1)}s` : '';
+
+                return `
+                    <div class="p-3 rounded-xl border ${cardBorder} text-sm space-y-1.5">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <div class="flex items-center gap-2 font-bold text-slate-900">
+                                <span class="w-6 h-6 rounded-full bg-purple-100 text-purple-800 text-xs font-kahoot font-black flex items-center justify-center">#${idx + 1}</span>
+                                <span class="text-lg">${entry.avatar}</span>
+                                <span>${escapeHtml(entry.name)}</span>
+                                <span class="text-xs font-normal text-slate-500">(Tổng: <strong class="text-slate-800">${entry.totalScore.toLocaleString('vi-VN')}đ</strong>)</span>
+                            </div>
+                            ${statusBadge}
+                        </div>
+                        <div class="pl-8 text-xs sm:text-sm text-slate-700 flex flex-wrap items-center justify-between gap-2">
+                            <div>
+                                <span class="text-slate-500">Phương án chọn:</span>
+                                <strong class="${entry.isCorrect ? 'text-emerald-800' : (entry.answered ? 'text-rose-700' : 'text-slate-500')}">${entry.answerText}</strong>
+                            </div>
+                            <span class="text-xs text-slate-400 font-semibold">${timeLabel}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('playerChosenAnswerBox').classList.add('hidden');
+            document.getElementById('correctAnswerDisplay').innerHTML = getCorrectAnswerText(q);
+            document.getElementById('explanationDisplay').innerHTML = q.explanation;
+
+            document.getElementById('modalScoreFooter').classList.add('hidden');
+            document.getElementById('playerWaitNextHint').classList.add('hidden');
+            const nextBtn = document.getElementById('nextQuestionBtn');
+            nextBtn.classList.remove('hidden');
+            nextBtn.textContent = currentIndex === activeQuestions.length - 1 ? 'Công bố Bục Vinh Quang 🏆' : 'Câu tiếp theo ➔';
+
+            overlay.classList.remove('hidden');
+            renderMath(overlay);
+        }
+
+        function renderHostAnswerDistributionChart(q, players) {
+            const chartBox = document.getElementById('hostAnswerChartBox');
+            const barsEl = document.getElementById('hostAnswerChartBars');
+            const totalLabel = document.getElementById('hostChartTotalLabel');
+            if (!chartBox || !barsEl) return;
+
+            chartBox.classList.remove('hidden');
+            const totalPlayers = Math.max(1, players.length);
+            const answeredPlayers = players.filter(p => p.lastAnsweredIndex === currentIndex);
+            totalLabel.textContent = `${answeredPlayers.length}/${players.length} đã nộp`;
+
+            let buckets = [];
+            if (q.type === 'quiz') {
+                const labels = ['A', 'B', 'C', 'D'];
+                const colors = ['bg-[#e21b3c]', 'bg-[#1368ce]', 'bg-[#d89e00]', 'bg-[#26890c]'];
+                buckets = labels.map((lbl, idx) => {
+                    const count = answeredPlayers.filter(p => p.lastShortChoice === lbl).length;
+                    return {
+                        label: `${lbl}. ${q.options[idx]}`,
+                        count,
+                        color: colors[idx],
+                        isCorrect: idx === q.correctIndex
+                    };
+                });
+            } else if (q.type === 'tf') {
+                buckets = [
+                    {
+                        label: 'ĐÚNG',
+                        count: answeredPlayers.filter(p => p.lastShortChoice === 'ĐÚNG').length,
+                        color: 'bg-[#1368ce]',
+                        isCorrect: q.correctBool === true
+                    },
+                    {
+                        label: 'SAI',
+                        count: answeredPlayers.filter(p => p.lastShortChoice === 'SAI').length,
+                        color: 'bg-[#e21b3c]',
+                        isCorrect: q.correctBool === false
+                    }
+                ];
+            } else {
+                const rightCnt = answeredPlayers.filter(p => p.lastIsCorrect).length;
+                const wrongCnt = answeredPlayers.filter(p => !p.lastIsCorrect).length;
+                const noneCnt = Math.max(0, players.length - answeredPlayers.length);
+                buckets = [
+                    { label: 'Trả lời ĐÚNG', count: rightCnt, color: 'bg-[#26890c]', isCorrect: true },
+                    { label: 'Trả lời SAI', count: wrongCnt, color: 'bg-[#e21b3c]', isCorrect: false },
+                    { label: 'Chưa nộp / Hết giờ', count: noneCnt, color: 'bg-slate-400', isCorrect: false }
+                ];
+            }
+
+            barsEl.innerHTML = buckets.map(b => {
+                const pct = Math.round((b.count / totalPlayers) * 100);
+                return `
+                    <div class="space-y-1">
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="font-bold ${b.isCorrect ? 'text-emerald-700' : 'text-slate-700'} truncate max-w-[75%]">
+                                ${b.isCorrect ? '✅ ' : ''}${b.label}
+                            </span>
+                            <span class="font-kahoot font-extrabold text-slate-800">${b.count} HS (${pct}%)</span>
+                        </div>
+                        <div class="w-full h-3 bg-slate-200 rounded-full overflow-hidden">
+                            <div class="h-full ${b.color} rounded-full transition-all duration-500" style="width: ${pct}%;"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+            const overlay = document.getElementById('feedbackOverlay');
+            const banner = document.getElementById('feedbackBanner');
+
+            if (isCorrect) {
+                banner.className = 'p-5 sm:p-6 text-center text-white bg-[#26890c]';
+                document.getElementById('feedbackIcon').textContent = streak >= 3 ? '🔥🎉' : '✅';
+                document.getElementById('feedbackTitle').textContent = `Chính xác! Hạng #${myRank}`;
+                document.getElementById('feedbackPoints').textContent = `+${earned.toLocaleString('vi-VN')} điểm • Chuỗi đúng: ${streak}`;
+            } else {
+                banner.className = 'p-5 sm:p-6 text-center text-white bg-[#e21b3c]';
+                document.getElementById('feedbackIcon').textContent = didAnswerThis ? '❌' : '⏰';
+                document.getElementById('feedbackTitle').textContent = didAnswerThis ? `Chưa chính xác! (Hạng #${myRank})` : 'Hết thời gian!';
+                document.getElementById('feedbackPoints').textContent = '0 điểm • Cố gắng ở câu tiếp theo nhé!';
+            }
+
+            document.getElementById('hostAnswerChartBox').classList.add('hidden');
+            document.getElementById('liveRoundLeaderboardBox').classList.add('hidden');
+
+            const chosenBox = document.getElementById('playerChosenAnswerBox');
+            const chosenDisp = document.getElementById('playerChosenAnswerDisplay');
+            chosenBox.classList.remove('hidden');
+            chosenDisp.innerHTML = didAnswerThis
+                ? `<span class="${isCorrect ? 'text-emerald-700' : 'text-rose-700'}">${me.lastAnswerText || 'Đã chọn'}</span>`
+                : '<span class="text-slate-500">⏰ Chưa chọn (Hết giờ)</span>';
+
+            document.getElementById('correctAnswerDisplay').innerHTML = getCorrectAnswerText(q);
+            document.getElementById('explanationDisplay').innerHTML = q.explanation;
+// ... existing code ... -->
+        function submitQuiz(chosenIdx) {
+            if (isAnswered) return;
+            const q = activeQuestions[currentIndex];
+            const isCorrect = chosenIdx === q.correctIndex;
+            const labels = ['A', 'B', 'C', 'D'];
+            finalizeAnswer(
+                isCorrect,
+                `${labels[chosenIdx]}. ${q.options[chosenIdx]}`,
+                `${labels[q.correctIndex]}. ${q.options[q.correctIndex]}`,
+                false,
+                labels[chosenIdx]
+            );
+        }
+
+        function submitTrueFalse(chosenBool) {
+            if (isAnswered) return;
+            const q = activeQuestions[currentIndex];
+            const isCorrect = chosenBool === q.correctBool;
+            const label = chosenBool ? 'ĐÚNG' : 'SAI';
+            finalizeAnswer(
+                isCorrect,
+                label,
+                q.correctBool ? 'ĐÚNG' : 'SAI',
+                false,
+                label
+            );
+        }
+
+        function submitNumber() {
+            if (isAnswered) return;
+            const inp = document.getElementById('numericAnswerInput');
+            const raw = (inp ? inp.value : '').trim().replace(',', '.');
+            if (!raw) {
+                inp.focus();
+                return;
+            }
+            const q = activeQuestions[currentIndex];
+            const isCorrect = q.correctAnswers.some(ans => ans.toLowerCase() === raw.toLowerCase());
+            finalizeAnswer(
+                isCorrect,
+                raw,
+                q.correctAnswers[0],
+                false,
+                raw
+            );
+        }
+
+        function submitPuzzle() {
+            if (isAnswered) return;
+            const q = activeQuestions[currentIndex];
+            const isCorrect = puzzleCurrentOrder.every((val, idx) => val === idx);
+            const userSummary = puzzleCurrentOrder.map((idx, i) => {
+                const ok = idx === i;
+                return `(${i + 1}) ${q.cards[idx]} ${ok ? '✓' : '✗'}`;
+            }).join(' → ');
+            const correctSummary = q.cards.map((c, i) => `(${i + 1}) ${c}`).join(' → ');
+            const shortOrder = puzzleCurrentOrder.map(idx => idx + 1).join('-');
+            finalizeAnswer(isCorrect, userSummary, correctSummary, false, shortOrder);
+        }
+// ... existing code ... -->
+        async function finalizeAnswer(isCorrect, userAnswerText, correctAnswerText, isTimeout = false, shortChoiceLabel = '') {
+            isAnswered = true;
+            clearInterval(timerInterval);
+
+            const q = activeQuestions[currentIndex];
+            const elapsedSec = Math.min(q.timeLimit, Math.max(0.5, (Date.now() - questionStartTime) / 1000));
+            const roundedSec = Number(elapsedSec.toFixed(1));
+            let earnedPoints = 0;
+
+            if (isCorrect) {
+                correctCount++;
+                streak++;
+                if (streak > maxStreak) maxStreak = streak;
+
+                // Kahoot-style speed + streak bonus
+                const timeRatio = Math.max(0, (q.timeLimit - elapsedSec) / q.timeLimit);
+                const basePoints = Math.round(600 + 400 * timeRatio);
+                const streakBonus = Math.min(300, (streak - 1) * 50);
+                earnedPoints = basePoints + streakBonus;
+                score += earnedPoints;
+            } else {
+                streak = 0;
+            }
+
+            updateScoreUI();
+
+            // Record history
+            reviewHistory.push({
+                q,
+                isCorrect,
+                userAnswerText,
+                correctAnswerText,
+                timeSpent: roundedSec.toFixed(1),
+                earnedPoints
+            });
+
+            // If Player in Live Room: sync answer to Firestore/MQTT and show waiting lock screen on phone
+            if (gameRole === 'player') {
+                sfxClick();
+                const answerArea = document.getElementById('answerArea');
+                answerArea.innerHTML = `
+                    <div class="max-w-md w-full mx-auto bg-[#46178f] text-white rounded-3xl p-8 text-center shadow-xl space-y-3 animate-fadeIn">
+                        <div class="text-5xl animate-bounce">🔒</div>
+                        <h3 class="font-kahoot font-black text-2xl">Đã gửi đáp án!</h3>
+                        <p class="text-purple-200 text-sm">Đang chờ các bạn khác hoàn thành câu hỏi này...</p>
+                        <div class="inline-block bg-black/25 px-4 py-1.5 rounded-full text-xs font-bold text-yellow-300">
+                            Thời gian phản hồi: ${roundedSec.toFixed(1)}s
+                        </div>
+                    </div>
+                `;
+
+                try {
+                    await window.fbBridge.upsertPlayerDoc(livePin, livePlayerId, {
+                        score,
+                        streak,
+                        maxStreak,
+                        correctCount,
+                        lastAnsweredIndex: currentIndex,
+                        lastIsCorrect: isCorrect,
+                        lastEarned: earnedPoints,
+                        lastAnswerText: userAnswerText,
+                        lastShortChoice: shortChoiceLabel || userAnswerText,
+                        lastTimeSpent: roundedSec,
+                        answersHistory: {
+                            [currentIndex]: {
+                                qId: q.id,
+                                answerText: userAnswerText,
+                                shortChoice: shortChoiceLabel || userAnswerText,
+                                isCorrect,
+                                earned: earnedPoints,
+                                timeSpent: roundedSec
+                            }
+                        }
+                    });
+                } catch (err) {
+                    console.error("Error submitting player answer:", err);
+                }
+                return;
+            }
+// ... existing code ... -->
+            document.getElementById('hostAnswerChartBox').classList.add('hidden');
+            document.getElementById('liveRoundLeaderboardBox').classList.add('hidden');
+            document.getElementById('playerChosenAnswerBox').classList.add('hidden');
+            document.getElementById('correctAnswerDisplay').innerHTML = correctAnswerText;
+// ... existing code ... -->
+            if (gameRole === 'host') {
+                const champion = sortedPlayers[0];
+                document.getElementById('resultPlayerName').textContent = champion
+                    ? `Quán quân: ${champion.avatar || '🏆'} ${champion.name}`
+                    : 'Kết thúc trận đấu';
+                document.getElementById('resultSubtitle').textContent = `Phòng #${livePin} • Hoàn thành ${activeQuestions.length} câu hỏi`;
+
+                document.getElementById('finalScore').textContent = champion ? (champion.score || 0).toLocaleString('vi-VN') : '0';
+                document.getElementById('finalAccuracy').textContent = champion ? `${champion.correctCount || 0}/${activeQuestions.length}` : '0/0';
+                document.getElementById('finalMaxStreak').textContent = champion ? `${champion.maxStreak || 0} 🔥` : '0 🔥';
+                document.getElementById('finalRank').textContent = `${sortedPlayers.length} HS`;
+
+                document.getElementById('hostResultReportActions').classList.remove('hidden');
+                document.getElementById('reviewSectionWrapper').classList.add('hidden');
+                document.getElementById('replaySoloBtn').classList.add('hidden');
+            } else {
+                const myName = document.getElementById('joinNameInput').value.trim() || 'Học sinh';
+                const myRank = sortedPlayers.findIndex(p => p.id === livePlayerId) + 1;
+
+                document.getElementById('resultPlayerName').textContent = `${selectedAvatar} ${myName}`;
+                document.getElementById('resultSubtitle').textContent = `Phòng #${livePin} • Hoàn thành chuyên đề Vectơ Toán 10`;
+                document.getElementById('finalScore').textContent = score.toLocaleString('vi-VN');
+                document.getElementById('finalAccuracy').textContent = `${correctCount}/${activeQuestions.length}`;
+                document.getElementById('finalMaxStreak').textContent = `${maxStreak} 🔥`;
+                document.getElementById('finalRank').textContent = myRank > 0 ? `#${myRank}` : '#1';
+
+                document.getElementById('hostResultReportActions').classList.add('hidden');
+                document.getElementById('reviewSectionWrapper').classList.remove('hidden');
+                document.getElementById('replaySoloBtn').classList.add('hidden');
+                filterReview('all');
+            }
+
+            const lbEl = document.getElementById('leaderboardList');
+            lbEl.innerHTML = sortedPlayers.map((p, idx) => {
+                const isMe = gameRole === 'player' && p.id === livePlayerId;
+                const rightNum = p.correctCount || 0;
+                const wrongNum = Math.max(0, activeQuestions.length - rightNum);
+                const accPct = activeQuestions.length > 0 ? Math.round((rightNum / activeQuestions.length) * 100) : 0;
+                return `
+                    <div class="flex items-center justify-between px-4 py-3.5 rounded-2xl border ${isMe || idx === 0 ? 'bg-purple-100 border-purple-400 font-extrabold text-purple-950 shadow-sm' : 'bg-slate-50 border-slate-200 text-slate-700'}">
+                        <div class="flex items-center gap-3">
+                            <span class="text-2xl">${medals[idx] || `#${idx + 1}`}</span>
+                            <span class="text-2xl">${p.avatar || '🦊'}</span>
+                            <div>
+                                <div>${escapeHtml(p.name)} ${isMe ? '(Bạn)' : ''}</div>
+                                <div class="text-xs font-normal text-slate-600">
+                                    ✅ Đúng: <strong class="text-emerald-700">${rightNum}</strong> &nbsp;|&nbsp;
+                                    ❌ Sai/Bỏ: <strong class="text-rose-600">${wrongNum}</strong> &nbsp;|&nbsp;
+                                    🎯 Tỷ lệ: <strong>${accPct}%</strong>
+                                </div>
+                            </div>
+                        </div>
+                        <span class="font-kahoot font-black text-lg">${(p.score || 0).toLocaleString('vi-VN')} đ</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function getPlayerRoundRecord(p, qIdx) {
+            if (p.answersHistory && p.answersHistory[qIdx]) {
+                return p.answersHistory[qIdx];
+            }
+            if (hostMatchLog[qIdx] && hostMatchLog[qIdx][p.id] && hostMatchLog[qIdx][p.id].answered) {
+                return hostMatchLog[qIdx][p.id];
+            }
+            if (p.lastAnsweredIndex === qIdx) {
+                return {
+                    answerText: p.lastAnswerText || 'Đã chọn',
+                    shortChoice: p.lastShortChoice || '',
+                    isCorrect: Boolean(p.lastIsCorrect),
+                    earned: p.lastEarned || 0,
+                    timeSpent: p.lastTimeSpent || null
+                };
+            }
+            return null;
+        }
+
+        function openFullMatrixModal() {
+            sfxClick();
+            const players = Object.values(livePlayersMap).sort((a, b) => (b.score || 0) - (a.score || 0));
+            const totalQ = activeQuestions.length;
+
+            // 1. Render per-student summary cards
+            const summaryEl = document.getElementById('matrixStudentSummaryCards');
+            summaryEl.innerHTML = players.map((p, idx) => {
+                let rightCnt = 0;
+                activeQuestions.forEach((q, qIdx) => {
+                    const rec = getPlayerRoundRecord(p, qIdx);
+                    if (rec && rec.isCorrect) rightCnt++;
+                });
+                const wrongCnt = Math.max(0, totalQ - rightCnt);
+                const pct = totalQ > 0 ? Math.round((rightCnt / totalQ) * 100) : 0;
+
+                return `
+                    <div class="p-3.5 rounded-2xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            <span class="text-2xl">${p.avatar || '🦊'}</span>
+                            <div class="min-w-0">
+                                <div class="font-kahoot font-extrabold text-sm text-slate-900 truncate">#${idx + 1} ${escapeHtml(p.name)}</div>
+                                <div class="text-xs text-slate-600 mt-0.5">
+                                    ✅ <strong class="text-emerald-700">${rightCnt}</strong> đúng •
+                                    ❌ <strong class="text-rose-600">${wrongCnt}</strong> sai/trống •
+                                    <strong>${pct}%</strong>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="font-kahoot font-black text-sm text-purple-800 whitespace-nowrap">
+                            ${(p.score || 0).toLocaleString('vi-VN')}đ
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // 2. Render Table Header
+            const thead = document.getElementById('matrixTableHead');
+            thead.innerHTML = `
+                <tr>
+                    <th class="p-3 whitespace-nowrap">Câu</th>
+                    <th class="p-3 min-w-[220px]">Nội dung câu hỏi</th>
+                    <th class="p-3 min-w-[150px] text-emerald-800">Đáp án đúng</th>
+                    ${players.map(p => `
+                        <th class="p-3 min-w-[180px] border-l border-slate-200">
+                            <div class="flex items-center gap-1.5">
+                                <span>${p.avatar || '🦊'}</span>
+                                <span class="truncate max-w-[130px]">${escapeHtml(p.name)}</span>
+                            </div>
+                        </th>
+                    `).join('')}
+                </tr>
+            `;
+
+            // 3. Render Table Body
+            const tbody = document.getElementById('matrixTableBody');
+            tbody.innerHTML = activeQuestions.map((q, qIdx) => {
+                const correctTxt = getCorrectAnswerText(q);
+                const studentCells = players.map(p => {
+                    const rec = getPlayerRoundRecord(p, qIdx);
+                    if (!rec) {
+                        return `
+                            <td class="p-3 border-l border-slate-200 align-top bg-slate-50/50">
+                                <span class="inline-block px-2 py-0.5 rounded text-[11px] font-bold bg-slate-200 text-slate-600">⏰ Chưa chọn (0đ)</span>
+                            </td>
+                        `;
+                    }
+                    const badge = rec.isCorrect
+                        ? `<span class="inline-block px-2 py-0.5 rounded text-[11px] font-extrabold bg-emerald-100 text-emerald-800">✅ Đúng (+${rec.earned || 0}đ)</span>`
+                        : `<span class="inline-block px-2 py-0.5 rounded text-[11px] font-extrabold bg-rose-100 text-rose-800">❌ Sai (0đ)</span>`;
+                    const tStr = typeof rec.timeSpent === 'number' ? `<span class="text-[11px] text-slate-400 ml-1">${rec.timeSpent.toFixed(1)}s</span>` : '';
+
+                    return `
+                        <td class="p-3 border-l border-slate-200 align-top ${rec.isCorrect ? 'bg-emerald-50/25' : 'bg-rose-50/25'}">
+                            <div class="font-semibold text-slate-800 mb-1">${rec.answerText}</div>
+                            <div class="flex items-center flex-wrap gap-1">${badge}${tStr}</div>
+                        </td>
+                    `;
+                }).join('');
+
+                return `
+                    <tr class="hover:bg-slate-50/80">
+                        <td class="p-3 font-kahoot font-extrabold text-purple-800 align-top whitespace-nowrap">
+                            Câu ${qIdx + 1}<div class="text-[10px] font-normal text-slate-400">#${q.id}</div>
+                        </td>
+                        <td class="p-3 text-slate-800 align-top">${q.question}</td>
+                        <td class="p-3 font-bold text-emerald-700 align-top">${correctTxt}</td>
+                        ${studentCells}
+                    </tr>
+                `;
+            }).join('');
+
+            const modal = document.getElementById('fullMatrixModal');
+            modal.classList.remove('hidden');
+            renderMath(modal);
+        }
+
+        function closeFullMatrixModal() {
+            document.getElementById('fullMatrixModal').classList.add('hidden');
+        }
+
+        function stripHtmlToPlainText(htmlStr) {
+            const tmp = document.createElement('div');
+            tmp.innerHTML = String(htmlStr || '');
+            return (tmp.textContent || tmp.innerText || '').replace(/\s+/g, ' ').trim();
+        }
+
+        function csvEscape(val) {
+            const s = String(val ?? '').replace(/"/g, '""');
+            return `"${s}"`;
+        }
+
+        function exportMatchReportCsv() {
+            sfxClick();
+            const players = Object.values(livePlayersMap).sort((a, b) => (b.score || 0) - (a.score || 0));
+            const totalQ = activeQuestions.length;
+            const rows = [];
+
+            // Section 1: Student Summary
+            rows.push(['BÁO CÁO KẾT QUẢ CHUYÊN ĐỀ VECTƠ TOÁN 10', `Phòng #${livePin || 'SOLO'}`, `Tổng số câu: ${totalQ}`]);
+            rows.push([]);
+            rows.push(['TỔNG KẾT THEO HỌC SINH']);
+            rows.push(['Hạng', 'Tên học sinh', 'Số câu đúng', 'Số câu sai / chưa chọn', 'Tỷ lệ chính xác (%)', 'Tổng điểm']);
+
+            players.forEach((p, idx) => {
+                let rightCnt = 0;
+                activeQuestions.forEach((q, qIdx) => {
+                    const rec = getPlayerRoundRecord(p, qIdx);
+                    if (rec && rec.isCorrect) rightCnt++;
+                });
+                const wrongCnt = Math.max(0, totalQ - rightCnt);
+                const pct = totalQ > 0 ? Math.round((rightCnt / totalQ) * 100) : 0;
+                rows.push([
+                    idx + 1,
+                    p.name,
+                    rightCnt,
+                    wrongCnt,
+                    `${pct}%`,
+                    p.score || 0
+                ]);
+            });
+
+            // Section 2: Detailed Cross-Comparison Matrix
+            rows.push([]);
+            rows.push(['CHI TIẾT LỰA CHỌN TỪNG CÂU HỎI']);
+            const detailHeader = ['STT Câu', 'Mã câu gốc', 'Mức độ', 'Nội dung câu hỏi', 'Đáp án đúng'];
+            players.forEach(p => {
+                detailHeader.push(`${p.name} - Phương án chọn`);
+                detailHeader.push(`${p.name} - Kết quả`);
+                detailHeader.push(`${p.name} - Điểm`);
+                detailHeader.push(`${p.name} - Thời gian (s)`);
+            });
+            rows.push(detailHeader);
+
+            activeQuestions.forEach((q, qIdx) => {
+                const row = [
+                    qIdx + 1,
+                    `#${q.id}`,
+                    q.levelName,
+                    stripHtmlToPlainText(q.question),
+                    stripHtmlToPlainText(getCorrectAnswerText(q))
+                ];
+                players.forEach(p => {
+                    const rec = getPlayerRoundRecord(p, qIdx);
+                    if (!rec) {
+                        row.push('Chưa chọn', 'CHƯA CHỌN', 0, '');
+                    } else {
+                        row.push(
+                            stripHtmlToPlainText(rec.answerText),
+                            rec.isCorrect ? 'ĐÚNG' : 'SAI',
+                            rec.earned || 0,
+                            typeof rec.timeSpent === 'number' ? rec.timeSpent.toFixed(1) : ''
+                        );
+                    }
+                });
+                rows.push(row);
+            });
+
+            const csvContent = '\uFEFF' + rows.map(r => r.map(csvEscape).join(',')).join('\r\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `bao-cao-kahoot-vecto10-phong-${livePin || 'solo'}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 1500);
+            showToast('Đã xuất file báo cáo CSV thành công!', '📥');
+        }
+
+        function showFinalResults() {
+            document.getElementById('topThreePodium').classList.add('hidden');
+            document.getElementById('hostResultReportActions').classList.add('hidden');
+            document.getElementById('reviewSectionWrapper').classList.remove('hidden');
+            document.getElementById('replaySoloBtn').classList.remove('hidden');
+            sfxVictory();
+            if (typeof confetti === 'function') {
+                confetti({ particleCount: 110, spread: 75, origin: { y: 0.6 } });
+            }
+
+            document.getElementById('gameScreen').classList.add('hidden');
+            document.getElementById('resultScreen').classList.remove('hidden');
+
+            const playerName = document.getElementById('playerNameInput').value.trim() || 'Học sinh Toán 10';
+            document.getElementById('resultPlayerName').textContent = playerName;
+            document.getElementById('finalScore').textContent = score.toLocaleString('vi-VN');
+            document.getElementById('finalAccuracy').textContent = `${correctCount}/${activeQuestions.length}`;
+            document.getElementById('finalMaxStreak').textContent = `${maxStreak} 🔥`;
+
+            // Simulated classroom competitors scaled to activeQuestions.length
+            const scale = activeQuestions.length / 50;
+            const bots = [
+                { name: 'Minh Anh (10A1)', score: Math.round(44200 * scale) },
+                { name: 'Gia Huy (10 Toán)', score: Math.round(38900 * scale) },
+                { name: 'Khánh Linh (10A2)', score: Math.round(31500 * scale) },
+                { name: 'Tuấn Kiệt (10A5)', score: Math.round(22400 * scale) }
+            ];
+
+            const allPlayers = [
+                { name: `${playerName} (Bạn)`, score: score, isUser: true },
+                ...bots
+            ].sort((a, b) => b.score - a.score);
+
+            const userRank = allPlayers.findIndex(p => p.isUser) + 1;
+            document.getElementById('finalRank').textContent = `#${userRank}`;
+
+            const lbEl = document.getElementById('leaderboardList');
+            lbEl.innerHTML = allPlayers.map((p, idx) => {
+                const medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'];
+                return `
+                    <div class="flex items-center justify-between px-4 py-3 rounded-2xl border ${p.isUser ? 'bg-purple-100 border-purple-400 font-extrabold text-purple-950 shadow-sm' : 'bg-slate-50 border-slate-200 text-slate-700'}">
+                        <div class="flex items-center gap-3">
+                            <span class="text-xl">${medals[idx] || `#${idx + 1}`}</span>
+                            <span>${p.name}</span>
+                        </div>
+                        <span class="font-kahoot font-black">${p.score.toLocaleString('vi-VN')} đ</span>
+                    </div>
+                `;
+            }).join('');
+
+            filterReview('all');
+        }
+
+        function filterReview(mode) {
+            const listEl = document.getElementById('reviewList');
+            const items = mode === 'wrong' ? reviewHistory.filter(r => !r.isCorrect) : reviewHistory;
+
+            if (items.length === 0) {
+                listEl.innerHTML = '<div class="text-center text-sm text-slate-500 py-6">Tuyệt vời! Bạn không có câu sai nào.</div>';
+                return;
+            }
+
+            listEl.innerHTML = items.map(item => `
+                <div class="p-3.5 rounded-xl bg-white border ${item.isCorrect ? 'border-emerald-200' : 'border-rose-200'} text-sm">
+                    <div class="flex items-center justify-between gap-2 mb-1">
+                        <span class="font-bold ${item.isCorrect ? 'text-emerald-700' : 'text-rose-700'}">
+                            ${item.isCorrect ? '✅' : '❌'} Câu #${item.q.id} (${item.q.levelName})
+                        </span>
+                        <span class="text-xs text-slate-400 font-medium">
+                            Làm trong ${item.timeSpent}s / ${item.q.timeLimit}s
+                        </span>
+                    </div>
+                    <div class="text-slate-800 font-medium mb-1.5">${item.q.question}</div>
+                    <div class="text-xs text-slate-600">
+                        Bạn chọn: <strong class="${item.isCorrect ? 'text-emerald-700' : 'text-rose-600'}">${item.userAnswerText}</strong>
+                        ${!item.isCorrect ? ` &nbsp;|&nbsp; Đáp án đúng: <strong class="text-emerald-700">${item.correctAnswerText}</strong>` : ''}
+                    </div>
+                </div>
+            `).join('');
+
+            renderMath(listEl);
+        }
+
+        function confirmReturnHome() {
+            const inActiveScreen =
+                !document.getElementById('gameScreen').classList.contains('hidden') ||
+                !document.getElementById('hostLobbyScreen').classList.contains('hidden') ||
+                !document.getElementById('playerWaitingScreen').classList.contains('hidden');
+
+            if (!inActiveScreen) {
+                returnHome();
+            } else {
+                document.getElementById('confirmModal').classList.remove('hidden');
+            }
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('confirmModal').classList.add('hidden');
+        }
+
+        function returnHome() {
+            cleanupLiveListeners();
+            closeConfirmModal();
+            gameRole = 'solo';
+            livePin = null;
+            lastRenderedPhaseSig = '';
+
+            document.getElementById('gameScreen').classList.add('hidden');
+            document.getElementById('hostLobbyScreen').classList.add('hidden');
+            document.getElementById('playerWaitingScreen').classList.add('hidden');
+            document.getElementById('resultScreen').classList.remove('hidden');
+            document.getElementById('feedbackOverlay').classList.add('hidden');
+            document.getElementById('fullMatrixModal').classList.add('hidden');
+            document.getElementById('hostLiveTrackingPanel').classList.add('hidden');
+            document.getElementById('headerStats').classList.add('hidden');
+            document.getElementById('roleHeaderBadge').classList.add('hidden');
+            document.getElementById('lobbyScreen').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>

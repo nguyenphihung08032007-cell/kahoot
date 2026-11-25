@@ -14,8 +14,9 @@
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
     <!-- QRCode.js for Instant Room QR Generation -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <!-- MQTT over WebSocket for Cross-Network Real-Time Sync (PC <-> 4G/Wi-Fi Phones) -->
-    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <!-- MQTT over WebSocket for Cross-Network Real-Time Sync (Primary + Backup CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/mqtt@5.3.5/dist/mqtt.min.js"
+        onerror="var s=document.createElement('script');s.src='https://unpkg.com/mqtt/dist/mqtt.min.js';document.head.appendChild(s);"></script>
     <!-- Canvas Confetti -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
@@ -129,7 +130,7 @@
     <!-- ==================== HEADER BAR ==================== -->
     <header id="appHeader" class="bg-white shadow-sm border-b border-slate-200 px-4 py-2.5 flex items-center justify-between sticky top-0 z-40">
         <div class="flex items-center gap-3">
-            <button onclick="confirmReturnHome()" class="flex items-center gap-2 group focus:outline-none">
+            <button type="button" onclick="confirmReturnHome()" class="flex items-center gap-2 group focus:outline-none">
                 <div class="bg-[#46178f] text-white font-kahoot font-black text-xl px-3 py-1 rounded-lg tracking-tight shadow-sm group-hover:bg-[#571eb0] transition">
                     Kahoot!
                 </div>
@@ -164,7 +165,7 @@
                 <span id="connectionStatusDot" class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
                 <span id="connectionStatusText">Đang kết nối...</span>
             </div>
-            <button id="soundToggleBtn" onclick="toggleSound()" title="Bật/Tắt âm thanh" class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition">
+            <button type="button" id="soundToggleBtn" onclick="toggleSound()" title="Bật/Tắt âm thanh" class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition">
                 <svg id="soundOnIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
                 </svg>
@@ -282,7 +283,7 @@
                         <input id="hostShuffleCheck" type="checkbox" class="w-4 h-4 rounded accent-yellow-400">
                         <span>Xáo trộn thứ tự câu hỏi</span>
                     </label>
-                    <button id="createRoomBtn" onclick="createLiveRoom()" class="w-full sm:w-auto kahoot-btn btn-green text-white font-kahoot font-black text-lg px-9 py-4 rounded-2xl uppercase tracking-wide">
+                    <button type="button" id="createRoomBtn" onclick="createLiveRoom()" class="w-full sm:w-auto kahoot-btn btn-green text-white font-kahoot font-black text-lg px-9 py-4 rounded-2xl uppercase tracking-wide">
                         Tạo Phòng &amp; Lấy Mã QR 📲
                     </button>
                 </div>
@@ -301,7 +302,11 @@
                     <div>
                         <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Mã PIN phòng (6 số)</label>
                         <input id="joinPinInput" type="text" inputmode="numeric" maxlength="6" placeholder="000000"
+                            oninput="onPlayerPinInputChange()"
                             class="w-full px-4 py-3.5 rounded-2xl border-2 border-slate-300 focus:border-[#46178f] focus:outline-none font-kahoot font-black text-center text-3xl tracking-[0.25em] text-slate-900">
+                        <div id="joinRoomPreviewBadge" class="hidden mt-1.5 text-center text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl py-1.5 px-3">
+                            ✓ Đã tìm thấy phòng!
+                        </div>
                     </div>
 
                     <div>
@@ -317,7 +322,7 @@
                         </div>
                     </div>
 
-                    <button id="joinRoomBtn" onclick="joinLiveRoom()" class="w-full kahoot-btn btn-purple text-white font-kahoot font-black text-lg py-4 rounded-2xl uppercase tracking-wide mt-2">
+                    <button type="button" id="joinRoomBtn" onclick="joinLiveRoom()" class="w-full kahoot-btn btn-purple text-white font-kahoot font-black text-lg py-4 rounded-2xl uppercase tracking-wide mt-2">
                         Vào Sảnh Chờ 🚀
                     </button>
                 </div>
@@ -336,7 +341,7 @@
                         <input id="shuffleQuestionsCheck" type="checkbox" class="w-4 h-4 rounded accent-yellow-400">
                         <span>Xáo trộn thứ tự câu hỏi (Bộ đề đang chọn: <strong id="soloSelectedLabel" class="text-yellow-300">Toàn bộ 50 câu</strong>)</span>
                     </label>
-                    <button onclick="startGame()" class="w-full sm:w-auto kahoot-btn btn-blue text-white font-kahoot font-black text-lg px-9 py-4 rounded-2xl uppercase tracking-wide">
+                    <button type="button" onclick="startGame()" class="w-full sm:w-auto kahoot-btn btn-blue text-white font-kahoot font-black text-lg px-9 py-4 rounded-2xl uppercase tracking-wide">
                         Tự Luyện Ngay 🎯
                     </button>
                 </div>
@@ -378,7 +383,7 @@
 
                     <!-- Warning Banner if running inside about:srcdoc / file:// -->
                     <div id="qrPreviewWarningBox" class="hidden text-left bg-amber-50 border border-amber-300 rounded-xl p-2.5 mb-2.5 text-[11px] text-amber-900 leading-snug">
-                        <strong>⚠️ Đang chạy ở chế độ xem trước/nội bộ:</strong> Điện thoại không thể mở trực tiếp link nội bộ này. Hãy bấm <button type="button" onclick="openPublishModal()" class="underline font-extrabold text-purple-800">Xuất bản ra Link (30 giây)</button> rồi dán đường link công khai vào ô dưới để mã QR hoạt động trên mọi điện thoại!
+                        <strong>⚠️ Đang chạy ở chế độ xem trước/nội bộ:</strong> Điện thoại không thể mở trực tiếp link nội bộ này. Hãy bấm <button type="button" onclick="openPublishModal()" class="underline font-extrabold text-purple-800">Xuất bản ra Link</button> rồi dán đường link công khai vào ô dưới để mã QR hoạt động trên mọi điện thoại!
                     </div>
 
                     <!-- Editable Public URL Input for Dynamic QR Update -->
@@ -387,37 +392,21 @@
                             Đường dẫn trang web công khai (URL):
                         </label>
                         <input id="hostPublicUrlInput" type="url" oninput="handleHostUrlChange()"
-                            placeholder="https://ten-web-cua-ban.netlify.app"
+                            placeholder="https://nguyenphihung08032007-cell.github.io/kahoot/"
                             class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:border-[#46178f] focus:outline-none text-xs font-semibold text-slate-800 bg-slate-50">
                     </div>
                 </div>
 
                 <div class="w-full pt-3 mt-2 border-t border-slate-200 flex gap-2">
-                    <button onclick="copyInviteLink()" class="flex-1 py-2.5 px-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs sm:text-sm transition flex items-center justify-center gap-1.5 shadow-sm">
+                    <button type="button" onclick="copyInviteLink()" class="flex-1 py-2.5 px-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs sm:text-sm transition flex items-center justify-center gap-1.5 shadow-sm">
                         <span>📋</span> Sao chép link tham gia
                     </button>
-                    <button onclick="confirmReturnHome()" class="py-2.5 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs sm:text-sm transition">
+                    <button type="button" onclick="confirmReturnHome()" class="py-2.5 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs sm:text-sm transition">
                         Hủy phòng
                     </button>
                 </div>
             </div>
 
-            <!-- Right: Connected Players & Start Button -->
-            <div class="lg:col-span-7 bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-6 sm:p-8 flex flex-col justify-between shadow-2xl">
-                <div>
-                    <div class="flex flex-wrap items-center justify-between gap-2 mb-4 pb-4 border-b border-white/15">
-                        <div>
-                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Mã PIN phòng (6 số)</label>
-                        <input id="joinPinInput" type="text" inputmode="numeric" maxlength="6" placeholder="000000"
-                            oninput="onPlayerPinInputChange()"
-                            class="w-full px-4 py-3.5 rounded-2xl border-2 border-slate-300 focus:border-[#46178f] focus:outline-none font-kahoot font-black text-center text-3xl tracking-[0.25em] text-slate-900">
-                        <div id="joinRoomPreviewBadge" class="hidden mt-1.5 text-center text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl py-1.5 px-3">
-                            ✓ Đã tìm thấy phòng!
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Tên hiển thị của bạn</label>
             <!-- Right: Connected Players & Start Button -->
             <div class="lg:col-span-7 bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-6 sm:p-8 flex flex-col justify-between shadow-2xl">
                 <div>
@@ -444,10 +433,16 @@
                     <div class="text-xs text-purple-200">
                         💡 Khi đủ học sinh (VD: 2/2 học sinh), bấm nút bên cạnh để bắt đầu.
                     </div>
-                    <button id="hostStartMatchBtn" onclick="hostStartLiveMatch()" disabled
-                        class="w-full sm:w-auto kahoot-btn btn-green disabled:opacity-45 disabled:cursor-not-allowed text-white font-kahoot font-black text-lg px-8 py-4 rounded-2xl uppercase tracking-wide">
-                        Bắt Đầu Trò Chơi 🚀
-                    </button>
+                    <div class="w-full sm:w-auto flex flex-col sm:flex-row items-center gap-2.5">
+                        <button type="button" onclick="addDemoPlayersToRoom()"
+                            class="w-full sm:w-auto px-4 py-3.5 rounded-2xl bg-white/15 hover:bg-white/25 border border-white/25 text-yellow-300 font-kahoot font-extrabold text-xs sm:text-sm transition">
+                            🧪 Thêm 2 HS test nhanh
+                        </button>
+                        <button type="button" id="hostStartMatchBtn" onclick="hostStartLiveMatch()" disabled
+                            class="w-full sm:w-auto kahoot-btn btn-green disabled:opacity-45 disabled:cursor-not-allowed text-white font-kahoot font-black text-lg px-8 py-4 rounded-2xl uppercase tracking-wide">
+                            Bắt Đầu Trò Chơi 🚀
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -498,7 +493,7 @@
                 <span id="sourceBadge" class="hidden sm:inline-block text-xs text-slate-500 font-medium bg-white px-3 py-1.5 rounded-xl border border-slate-200">
                     Nguồn: Cánh Diều
                 </span>
-                <button id="skipOrRevealBtn" onclick="skipToAnswer()" class="text-xs font-bold text-slate-500 hover:text-slate-800 bg-white hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-xl transition">
+                <button type="button" id="skipOrRevealBtn" onclick="skipToAnswer()" class="text-xs font-bold text-slate-500 hover:text-slate-800 bg-white hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-xl transition">
                     Nộp / Bỏ qua ⏭
                 </button>
             </div>
@@ -618,7 +613,7 @@
                     <div id="modalScoreFooter" class="text-xs text-slate-500">
                         Tổng điểm hiện tại: <strong id="modalTotalScore" class="text-slate-900 text-sm">0</strong>
                     </div>
-                    <button id="nextQuestionBtn" onclick="nextQuestion()" class="kahoot-btn btn-blue text-white font-kahoot font-extrabold px-7 py-3 rounded-xl text-base">
+                    <button type="button" id="nextQuestionBtn" onclick="nextQuestion()" class="kahoot-btn btn-blue text-white font-kahoot font-extrabold px-7 py-3 rounded-xl text-base">
                         Câu tiếp theo ➔
                     </button>
                     <div id="playerWaitNextHint" class="hidden text-xs sm:text-sm font-bold text-purple-700 animate-pulse">
@@ -692,8 +687,8 @@
                             <span>📋</span> Chi tiết bài làm &amp; thời gian từng câu
                         </h3>
                         <div class="flex gap-1.5 text-xs">
-                            <button onclick="filterReview('all')" class="px-2.5 py-1 rounded-lg bg-slate-200 font-bold text-slate-700 hover:bg-slate-300">Tất cả</button>
-                            <button onclick="filterReview('wrong')" class="px-2.5 py-1 rounded-lg bg-rose-100 font-bold text-rose-700 hover:bg-rose-200">Câu sai</button>
+                            <button type="button" onclick="filterReview('all')" class="px-2.5 py-1 rounded-lg bg-slate-200 font-bold text-slate-700 hover:bg-slate-300">Tất cả</button>
+                            <button type="button" onclick="filterReview('wrong')" class="px-2.5 py-1 rounded-lg bg-rose-100 font-bold text-rose-700 hover:bg-rose-200">Câu sai</button>
                         </div>
                     </div>
                     <div id="reviewList" class="max-h-80 overflow-y-auto space-y-2.5 pr-1 border border-slate-200 rounded-2xl p-3 bg-slate-50">
@@ -703,10 +698,10 @@
 
                 <!-- Action Buttons -->
                 <div class="flex flex-col sm:flex-row gap-3 justify-center mt-7">
-                    <button onclick="returnHome()" class="kahoot-btn btn-purple text-white font-kahoot font-extrabold px-8 py-3.5 rounded-2xl text-base">
+                    <button type="button" onclick="returnHome()" class="kahoot-btn btn-purple text-white font-kahoot font-extrabold px-8 py-3.5 rounded-2xl text-base">
                         🏠 Về màn hình chính
                     </button>
-                    <button id="replaySoloBtn" onclick="startGame()" class="kahoot-btn btn-green text-white font-kahoot font-extrabold px-8 py-3.5 rounded-2xl text-base">
+                    <button type="button" id="replaySoloBtn" onclick="startGame()" class="kahoot-btn btn-green text-white font-kahoot font-extrabold px-8 py-3.5 rounded-2xl text-base">
                         🔄 Chơi lại lượt này
                     </button>
                 </div>
@@ -720,8 +715,8 @@
             <h3 class="font-kahoot font-extrabold text-xl text-slate-900 mb-2">Rời khỏi phòng hiện tại?</h3>
             <p class="text-sm text-slate-600 mb-5">Bạn sẽ thoát khỏi phiên chơi hiện tại và quay về trang chủ.</p>
             <div class="flex gap-3 justify-center">
-                <button onclick="closeConfirmModal()" class="px-5 py-2.5 rounded-xl bg-slate-200 hover:bg-slate-300 font-bold text-slate-800 text-sm">Ở lại</button>
-                <button onclick="returnHome()" class="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 font-bold text-white text-sm">Thoát về trang chủ</button>
+                <button type="button" onclick="closeConfirmModal()" class="px-5 py-2.5 rounded-xl bg-slate-200 hover:bg-slate-300 font-bold text-slate-800 text-sm">Ở lại</button>
+                <button type="button" onclick="returnHome()" class="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 font-bold text-white text-sm">Thoát về trang chủ</button>
             </div>
         </div>
     </div>
@@ -752,7 +747,7 @@
                             <p class="text-xs text-slate-600 mb-2">File chứa trọn vẹn 50 câu hỏi Vectơ Toán 10, KaTeX, âm thanh và kết nối đa thiết bị.</p>
                             <button type="button" onclick="downloadStandaloneHtml()"
                                 class="kahoot-btn btn-green text-white font-kahoot font-extrabold text-xs sm:text-sm px-4 py-2.5 rounded-xl inline-flex items-center gap-2">
-                                <span>⬇️</span> <span>Tải file HTML độc lập (kahoot-toan10-vecto.html)</span>
+                                <span>⬇️</span> <span>Tải file HTML độc lập (index.html)</span>
                             </button>
                         </div>
                     </div>
@@ -760,9 +755,9 @@
                     <div class="flex items-start gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-200">
                         <span class="w-7 h-7 rounded-full bg-slate-800 text-white font-kahoot font-black text-xs flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
                         <div>
-                            <div class="font-bold text-slate-900">Kéo thả lên Netlify Drop hoặc GitHub Pages</div>
+                            <div class="font-bold text-slate-900">Đẩy lên GitHub Pages hoặc Tiiny.host</div>
                             <p class="text-xs text-slate-600 leading-relaxed">
-                                Mở <a href="https://app.netlify.com/drop" target="_blank" rel="noopener noreferrer" class="text-blue-600 font-bold underline">app.netlify.com/drop</a> (không cần cài đặt), kéo thả file vừa tải vào khung trình duyệt. Sau 5 giây bạn sẽ nhận được đường link dạng <code class="bg-slate-200 px-1.5 py-0.5 rounded text-slate-800">https://ten-ngau-nhien.netlify.app</code>.
+                                Tải file <code class="bg-slate-200 px-1.5 py-0.5 rounded text-slate-800">index.html</code> lên repository GitHub của bạn và bật <strong>Settings → Pages → Branch: main</strong> (để trống ô Custom domain) để nhận link <code class="bg-slate-200 px-1.5 py-0.5 rounded text-slate-800">https://...github.io/kahoot/</code>.
                             </p>
                         </div>
                     </div>
@@ -826,402 +821,55 @@
         </div>
     </div>
 
+    <!-- ==================== REAL-TIME SYNC BRIDGE (FIREBASE + MQTT WEBSOCKET + BROADCAST) ==================== -->
     <script type="module">
-// ... existing code ... -->
-            upsertPlayerDoc: async (pin, playerId, playerData) => {
-                if (!mqttPlayersCache[pin]) mqttPlayersCache[pin] = {};
-                const prev = mqttPlayersCache[pin][playerId] || {};
-                const mergedHistory = {
-                    ...(prev.answersHistory || {}),
-                    ...(playerData.answersHistory || {})
-                };
-                const merged = {
-                    ...prev,
-                    ...playerData,
-                    answersHistory: mergedHistory
-                };
-                mqttPlayersCache[pin][playerId] = merged;
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-                publishSyncPacket(`${TOPIC_PREFIX}/${pin}/player/${playerId}`, merged, true);
-                publishSyncPacket(`${TOPIC_PREFIX}/${pin}/action`, { type: 'player_update', playerId, ts: Date.now() }, false);
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'kahoot-vecto-10';
 
-                if (firebaseReady && db) {
-                    try {
-                        const pRef = doc(db, 'artifacts', appId, 'public', 'data', `kahoot_players_${pin}`, playerId);
-                        await setDoc(pRef, merged, { merge: true });
-                    } catch (e) { /* MQTT already synced */ }
-                }
-            },
-// ... existing code ... -->
-            {
-                id: 3,
-                level: 'nb',
-                levelName: 'Nhận biết',
-                type: 'quiz',
-                source: 'Cánh Diều - Ví dụ 1',
-                timeLimit: 18,
-                timeNote: '18s • Liệt kê đỉnh',
-                question: 'Cho tứ giác $ABCD$. Có bao nhiêu vectơ khác $\\vec{0}$ có điểm đầu là $A$ và điểm cuối là một trong các đỉnh còn lại của tứ giác?',
-                options: ['$2$', '$3$', '$4$', '$6$'],
-                correctIndex: 1,
-                explanation: 'Có đúng $3$ vectơ thỏa mãn điều kiện đề bài là: $\\vec{AB}, \\vec{AC}, \\vec{AD}$.'
-            },
-            {
-                id: 4,
-                level: 'nb',
-                levelName: 'Nhận biết',
-                type: 'tf',
-                source: 'Kết nối tri thức',
-                timeLimit: 15,
-                timeNote: '15s • Quy tắc ba điểm',
-                question: 'Với ba điểm bất kì $A, B, C$ trong mặt phẳng, ta luôn có đẳng thức $\\vec{AB} + \\vec{BC} = \\vec{AC}$.',
-                correctBool: true,
-                explanation: '<strong>Đúng.</strong> Đây chính là quy tắc ba điểm (quy tắc cộng) đối với phép cộng hai vectơ.'
-            },
-            {
-                id: 5,
-                level: 'nb',
-                levelName: 'Nhận biết',
-                type: 'quiz',
-                source: 'Cánh Diều - Bài 33',
-                timeLimit: 18,
-                timeNote: '18s • Quy tắc hình bình hành',
-                question: 'Cho hình bình hành $ABCD$. Khẳng định nào sau đây là đúng?',
-                options: [
-                    '$\\vec{AB} + \\vec{AD} = \\vec{AC}$',
-                    '$\\vec{AB} + \\vec{AD} = \\vec{BD}$',
-                    '$\\vec{AB} + \\vec{BC} = \\vec{DA}$',
-                    '$\\vec{BA} + \\vec{DA} = \\vec{AC}$'
-                ],
-                correctIndex: 0,
-                explanation: 'Theo quy tắc hình bình hành, với hình bình hành $ABCD$ ta luôn có $\\vec{AB} + \\vec{AD} = \\vec{AC}$.'
-            },
-            {
-                id: 6,
-                level: 'nb',
-                levelName: 'Nhận biết',
-                type: 'quiz',
-                source: 'Kết nối tri thức',
-                timeLimit: 18,
-                timeNote: '18s • Tính chất trung điểm',
-                question: 'Điều kiện cần và đủ để điểm $I$ là trung điểm của đoạn thẳng $AB$ là:',
-// ... existing code ... -->
-            {
-                id: 11,
-                level: 'th',
-                levelName: 'Thông hiểu',
-                type: 'quiz',
-                source: 'KNTT - Bài 4.40',
-                timeLimit: 22,
-                timeNote: '22s • Hình dung vị trí điểm',
-                question: 'Cho đoạn thẳng $AC$ và điểm $B$ nằm giữa hai điểm $A, C$. Khẳng định nào sau đây đúng?',
-                options: [
-                    'Hai vectơ $\\vec{AB}$ và $\\vec{CB}$ cùng hướng.',
-                    'Hai vectơ $\\vec{CA}$ và $\\vec{BC}$ cùng hướng.',
-                    'Hai vectơ $\\vec{AB}$ và $\\vec{AC}$ cùng hướng.',
-                    'Hai vectơ $\\vec{AC}$ và $\\vec{BA}$ cùng hướng.'
-                ],
-                correctIndex: 2,
-                explanation: 'Vì $B$ nằm giữa $A$ và $C$ nên tia $AB$ trùng với tia $AC$, do đó hai vectơ $\\vec{AB}$ và $\\vec{AC}$ cùng hướng.'
-            },
-            {
-                id: 12,
-                level: 'th',
-                levelName: 'Thông hiểu',
-                type: 'number',
-                source: 'KNTT - Bài 4.39',
-                timeLimit: 30,
-                timeNote: '30s • Đếm tổ hợp & nhập số',
-                question: 'Cho hình bình hành $ABCD$ tâm $O$. Xét các vectơ khác $\\vec{0}$ có điểm đầu và điểm cuối lấy từ các điểm $A, B, C, D, O$. Có tất cả bao nhiêu vectơ cùng phương với vectơ $\\vec{AC}$?',
-                correctAnswers: ['6'],
-                explanation: 'Các vectơ khác $\\vec{0}$ nằm trên đường thẳng $AC$ (đi qua 3 điểm $A, O, C$) gồm $3 \\times 2 = 6$ vectơ: $\\vec{AC}, \\vec{CA}, \\vec{AO}, \\vec{OA}, \\vec{OC}, \\vec{CO}$.'
-            },
-            {
-                id: 13,
-                level: 'th',
-                levelName: 'Thông hiểu',
-                type: 'quiz',
-                source: 'Cánh Diều - Ví dụ 10',
-                timeLimit: 25,
-                timeNote: '25s • Quỹ tích điểm cơ bản',
-                question: 'Trong mặt phẳng cho hai điểm phân biệt $A, B$. Tập hợp tất cả các điểm $M$ thỏa mãn $|\\vec{AM}| = |\\vec{BM}|$ là hình gì?',
-                options: [
-                    'Đường tròn tâm $A$ bán kính $AB$.',
-                    'Đường trung trực của đoạn thẳng $AB$.',
-                    'Đường tròn đường kính $AB$.',
-                    'Trung điểm của đoạn thẳng $AB$.'
-                ],
-                correctIndex: 1,
-                explanation: 'Ta có $|\\vec{AM}| = |\\vec{BM}| \\Leftrightarrow AM = BM$, suy ra $M$ cách đều hai đầu mút $A, B$ nên tập hợp điểm $M$ là đường trung trực của $AB$.'
-            },
-            {
-                id: 14,
-                level: 'th',
-                levelName: 'Thông hiểu',
-                type: 'tf',
-                source: 'Cánh Diều - Ví dụ 11',
-                timeLimit: 20,
-                timeNote: '20s • Vật lý & Vectơ',
-                question: 'Treo một vật có khối lượng $10\\text{ kg}$ vào một sợi dây thẳng đứng. Khi vật đứng yên, vectơ trọng lực $\\vec{P}$ và vectơ lực căng dây $\\vec{T}$ là hai vectơ cùng phương, cùng hướng.',
-                correctBool: false,
-                explanation: '<strong>Sai.</strong> Khi vật cân bằng đứng yên, $\\vec{P} + \\vec{T} = \\vec{0}$, hai vectơ này cùng phương thẳng đứng nhưng <strong>ngược hướng</strong> nhau ($\\vec{P}$ hướng xuống, $\\vec{T}$ hướng lên).'
-            },
-            {
-                id: 15,
-                level: 'th',
-                levelName: 'Thông hiểu',
-                type: 'quiz',
-                source: 'KNTT - Bài 4.1',
-                timeLimit: 28,
-                timeNote: '28s • Kiểm tra 4 hệ thức',
-                question: 'Cho tam giác $ABC$, $M$ là trung điểm $BC$ và $G$ là trọng tâm tam giác. Khẳng định nào sau đây là <strong>sai</strong>?',
-// ... existing code ... -->
-            {
-                id: 20,
-                level: 'th',
-                levelName: 'Thông hiểu',
-                type: 'tf',
-                source: 'KNTT - Ví dụ 1',
-                timeLimit: 22,
-                timeNote: '22s • Cẩn thận bẫy góc vectơ',
-                question: 'Cho tam giác đều $ABC$ cạnh $a$. Góc giữa hai vectơ $\\vec{AB}$ và $\\vec{BC}$ bằng $60^\\circ$.',
-// ... existing code ... -->
-            {
-                id: 39,
-                level: 'vdc',
-                levelName: 'Vận dụng cao',
-                type: 'quiz',
-                source: 'KNTT - Bài 4.28',
-                timeLimit: 85,
-                timeNote: '85s • Tọa độ hóa bài toán thực tế',
-                question: 'Để kéo đường dây điện băng qua một hồ hình chữ nhật $ABCD$ có $AB = 200\\text{ m}$, $AD = 180\\text{ m}$, người ta dựng 4 cột điện liên tiếp cách đều nhau trên một đoạn thẳng. Cột thứ nhất nằm trên bờ $AB$ cách $A$ một khoảng $20\\text{ m}$, cột thứ tư nằm trên bờ $CD$ cách $C$ một khoảng $30\\text{ m}$. Khoảng cách từ cột thứ hai đến bờ $AD$ là bao nhiêu mét?',
-                options: ['$50\\text{ m}$', '$70\\text{ m}$', '$120\\text{ m}$', '$60\\text{ m}$'],
-                correctIndex: 1,
-                explanation: 'Chọn hệ trục $A(0;0)$, $B(200;0)$, $D(0;180)$, $C(200;180)$. Cột 1 là $M_1(20;0)$, cột 4 là $M_4(170;180)$. Vì 4 cột cách đều nên $\\vec{M_1M_2} = \\frac{1}{3}\\vec{M_1M_4} \\Rightarrow x_{M_2} = 20 + \\frac{170 - 20}{3} = 70\\text{ m}$.'
-            },
-            {
-                id: 40,
-                level: 'vdc',
-                levelName: 'Vận dụng cao',
-                type: 'quiz',
-                source: 'KNTT - Bài 4.56',
-                timeLimit: 90,
-                timeNote: '90s • Vuông góc trong tam giác đều',
-                question: 'Cho tam giác đều $ABC$ cạnh bằng $1$. Lấy $M, N, P$ lần lượt thuộc các cạnh $BC, CA, AB$ sao cho $BM = 2MC$, $CN = 2NA$ và $AM \\perp NP$. Tỉ số $\\frac{AP}{AB}$ bằng:',
-                options: ['$\\frac{5}{12}$', '$\\frac{7}{12}$', '$\\frac{5}{7}$', '$\\frac{7}{5}$'],
-                correctIndex: 1,
-                explanation: 'Đặt $\\vec{AP} = x\\vec{AB}$. Ta có $\\vec{AM} = \\frac{1}{3}\\vec{AB} + \\frac{2}{3}\\vec{AC}$ và $\\vec{NP} = x\\vec{AB} - \\frac{1}{3}\\vec{AC}$. Với $AB=AC=1$ và $\\vec{AB}\\cdot\\vec{AC} = \\frac{1}{2}$, giải $\\vec{AM}\\cdot\\vec{NP} = 0 \\Leftrightarrow x = \\frac{7}{12}$.'
-            },
-            {
-                id: 41,
-                level: 'vdc',
-                levelName: 'Vận dụng cao',
-                type: 'quiz',
-                source: 'KNTT - Bài 4.55',
-                timeLimit: 85,
-                timeNote: '85s • Tọa độ hóa tam giác vuông',
-                question: 'Cho tam giác $ABC$ vuông tại $A$ có $AB = 1$, $AC = 2$. Lấy $M, N, P$ lần lượt trên $BC, CA, AB$ sao cho $2BM = MC$, $CN = 2NA$, $AP = 2PB$. Giá trị của tích vô hướng $\\vec{AM} \\cdot \\vec{NP}$ bằng:',
-                options: ['$\\frac{2}{3}$', '$-\\frac{1}{2}$', '$0$', '$1$'],
-                correctIndex: 2,
-                explanation: 'Chọn hệ trục $A(0;0)$, $B(1;0)$, $C(0;2)$. Ta tìm được $M(\\frac{2}{3}; \\frac{2}{3})$, $N(0; \\frac{2}{3})$, $P(\\frac{2}{3}; 0)$. Suy ra $\\vec{AM} = (\\frac{2}{3}; \\frac{2}{3})$ và $\\vec{NP} = (\\frac{2}{3}; -\\frac{2}{3}) \\Rightarrow \\vec{AM}\\cdot\\vec{NP} = \\frac{4}{9} - \\frac{4}{9} = 0$.'
-            },
-            {
-                id: 42,
-                level: 'vdc',
-                levelName: 'Vận dụng cao',
-                type: 'quiz',
-                source: 'KNTT - Bài 4.57',
-                timeLimit: 80,
-                timeNote: '80s • Định lí hình chiếu vô hướng',
-                question: 'Cho tam giác đều $ABC$ có cạnh bằng $3a$. Lấy điểm $M$ thuộc cạnh $BC$ sao cho $MB = 2MC$. Tích vô hướng $\\vec{MA} \\cdot \\vec{MC}$ bằng:',
-                options: ['$\\frac{a^2}{2}$', '$-\\frac{a^2}{2}$', '$a^2$', '$-a^2$'],
-                correctIndex: 1,
-                explanation: 'Gọi $I$ là trung điểm $BC$. Hình chiếu vuông góc của $\\vec{MA}$ lên đường thẳng $BC$ là $\\vec{MI} = -\\frac{1}{6}\\vec{BC}$, còn $\\vec{MC} = \\frac{1}{3}\\vec{BC}$. Suy ra $\\vec{MA}\\cdot\\vec{MC} = \\vec{MI}\\cdot\\vec{MC} = -\\frac{1}{18}BC^2 = -\\frac{9a^2}{18} = -\\frac{a^2}{2}$.'
-            },
-            {
-                id: 43,
-                level: 'vdc',
-                levelName: 'Vận dụng cao',
-                type: 'number',
-                source: 'KNTT - Bài 4.26a',
-                timeLimit: 75,
-                timeNote: '75s • Cực trị độ dài tổng vectơ',
-                question: 'Trong mặt phẳng tọa độ $Oxy$, cho hai điểm $C(1; 6)$ và $D(11; 2)$. Điểm $E(0; y_0)$ thuộc trục tung sao cho độ dài vectơ $\\vec{EC} + \\vec{ED}$ đạt giá trị nhỏ nhất. Tìm tung độ $y_0$ của điểm $E$.',
-                correctAnswers: ['4'],
-                explanation: 'Gọi $I(6; 4)$ là trung điểm của $CD$. Ta có $|\\vec{EC} + \\vec{ED}| = |2\\vec{EI}| = 2EI$. Để $EI$ nhỏ nhất thì $E$ là hình chiếu vuông góc của $I(6; 4)$ lên trục tung $Oy$, suy ra $E(0; 4) \\Rightarrow y_0 = 4$.'
-            },
-            {
-                id: 44,
-                level: 'vdc',
-                levelName: 'Vận dụng cao',
-                type: 'quiz',
-                source: 'KNTT - Bài 4.35',
-                timeLimit: 85,
-                timeNote: '85s • Tìm đỉnh hình vuông',
-                question: 'Trong mặt phẳng tọa độ $Oxy$, cho hình vuông $ABCD$ có hai đỉnh đối diện là $A(1; 4)$ và $C(9; 2)$. Biết đỉnh $B$ có tung độ âm, tọa độ của đỉnh $B$ là:',
-                options: ['$(4; -1)$', '$(6; 7)$', '$(5; -2)$', '$(3; -1)$'],
-                correctIndex: 0,
-                explanation: 'Tâm hình vuông là trung điểm $AC$: $I(5; 3)$, vectơ $\\vec{IA} = (-4; 1)$. Vì $IB \\perp IA$ và $IB = IA$ nên $\\vec{IB} = (-1; -4)$ hoặc $(1; 4)$. Do $y_B < 0$ nên $\\vec{IB} = (-1; -4) \\Rightarrow B(5 - 1; 3 - 4) = (4; -1)$.'
-            },
-            {
-                id: 45,
-                level: 'vdc',
-                levelName: 'Vận dụng cao',
-                type: 'quiz',
-                source: 'Cánh Diều - Ví dụ 7',
-                timeLimit: 85,
-                timeNote: '85s • Hệ số tỉ lệ cùng phương',
-                question: 'Cho tam giác $ABC$. Lấy các điểm $D, E, H$ thỏa mãn $\\vec{DB} = \\frac{1}{5}\\vec{BC}$, $\\vec{AE} = \\frac{1}{4}\\vec{AC}$, $\\vec{AH} = \\frac{2}{3}\\vec{AB}$. Biểu thị vectơ $\\vec{HE}$ theo $\\vec{DH}$, ta được $\\vec{HE} = k\\vec{DH}$. Giá trị của $k$ là:',
-                options: ['$\\frac{4}{5}$', '$\\frac{5}{4}$', '$-\\frac{5}{4}$', '$\\frac{3}{4}$'],
-                correctIndex: 1,
-                explanation: 'Phân tích theo $\\vec{AB}, \\vec{AC}$: $\\vec{DH} = -\\frac{8}{15}\\vec{AB} + \\frac{1}{5}\\vec{AC}$ và $\\vec{HE} = -\\frac{2}{3}\\vec{AB} + \\frac{1}{4}\\vec{AC} = \\frac{5}{4}\\left(-\\frac{8}{15}\\vec{AB} + \\frac{1}{5}\\vec{AC}\\right) = \\frac{5}{4}\\vec{DH}$.'
-            },
-            {
-                id: 46,
-                level: 'vdc',
-                levelName: 'Vận dụng cao',
-                type: 'quiz',
-                source: 'Cánh Diều - Ví dụ 9d',
-                timeLimit: 75,
-                timeNote: '75s • Trọng tâm tứ giác',
-                question: 'Cho tứ giác $ABCD$. Gọi $G$ là trọng tâm của tứ giác (tức $\\vec{GA} + \\vec{GB} + \\vec{GC} + \\vec{GD} = \\vec{0}$) và $A\'$ là trọng tâm tam giác $BCD$. Khẳng định nào sau đây đúng?',
-                options: [
-                    '$\\vec{AG} = \\frac{2}{3}\\vec{AA\'}$',
-                    '$\\vec{AG} = \\frac{3}{4}\\vec{AA\'}$',
-                    '$\\vec{AG} = \\frac{1}{4}\\vec{AA\'}$',
-                    '$\\vec{AG} = \\frac{4}{3}\\vec{AA\'}$'
-                ],
-                correctIndex: 1,
-                explanation: 'Ta có $\\vec{AB} + \\vec{AC} + \\vec{AD} = 4\\vec{AG}$ và $\\vec{AB} + \\vec{AC} + \\vec{AD} = 3\\vec{AA\'}$, suy ra $4\\vec{AG} = 3\\vec{AA\'} \\Leftrightarrow \\vec{AG} = \\frac{3}{4}\\vec{AA\'}$.'
-            },
-// ... existing code ... -->
-            {
-                id: 49,
-                level: 'vdc',
-                levelName: 'Vận dụng cao',
-                type: 'quiz',
-                source: 'KNTT - Bài 4.68b',
-                timeLimit: 90,
-                timeNote: '90s • Giải hệ tìm trực tâm',
-                question: 'Trong mặt phẳng tọa độ $Oxy$, cho tam giác $ABC$ có $A(-2; 1)$, $B(1; 4)$ và $C(5; -2)$. Tọa độ trực tâm $H$ của tam giác $ABC$ là:',
-// ... existing code ... -->
-        let gameRole = 'solo'; // 'solo' | 'host' | 'player'
-        let livePin = null;
-        let livePlayerId = null;
-        let livePlayersMap = {};
-        let hostLivePeekEnabled = false;
-        let hostMatchLog = {};
-        let unsubRoom = null;
-        let unsubPlayers = null;
-        let lastRenderedQuestionSig = '';
-        let lastRenderedPhaseSig = '';
-// ... existing code ... -->
-                gameRole = 'host';
-                livePin = pin;
-                activeQuestions = pool;
-                currentIndex = 0;
-                livePlayersMap = {};
-                hostMatchLog = {};
-                hostLivePeekEnabled = false;
-                reviewHistory = [];
-// ... existing code ... -->
-            // If currently in active question phase, check if all players answered
-            if (!document.getElementById('gameScreen').classList.contains('hidden')) {
-                renderHostLiveStudentCards();
-
-                if (!isAnswered) {
-                    const answeredCount = players.filter(p => p.lastAnsweredIndex === currentIndex).length;
-                    const counterEl = document.getElementById('hostAnsweredCounter');
-                    counterEl.textContent = `Đã trả lời: ${answeredCount} / ${count}`;
-
-                    if (count > 0 && answeredCount >= count) {
-                        // Everyone submitted! Auto-reveal immediately
-                        hostRevealCurrentQuestion();
-                    }
-                }
-            }
+        // Unique client session UID (persisted per tab)
+        let clientUid = sessionStorage.getItem('kvn_client_uid');
+        if (!clientUid) {
+            clientUid = 'u_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+            sessionStorage.setItem('kvn_client_uid', clientUid);
         }
 
-        function toggleHostLivePeek() {
-            sfxClick();
-            hostLivePeekEnabled = !hostLivePeekEnabled;
-            const btn = document.getElementById('toggleLivePeekBtn');
-            const label = document.getElementById('toggleLivePeekText');
-            if (btn && label) {
-                if (hostLivePeekEnabled) {
-                    btn.className = 'px-3.5 py-1.5 rounded-xl text-xs font-extrabold border transition flex items-center gap-1.5 bg-purple-700 text-white border-purple-800 shadow-sm';
-                    label.textContent = 'Xem trực tiếp đáp án học sinh chọn: BẬT';
-                } else {
-                    btn.className = 'px-3.5 py-1.5 rounded-xl text-xs font-extrabold border transition flex items-center gap-1.5 bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200';
-                    label.textContent = 'Xem trực tiếp đáp án học sinh chọn: TẮT';
-                }
+        let auth = null;
+        let db = null;
+        let firebaseReady = false;
+
+        // MQTT over WebSocket layer (works across 4G/Wi-Fi on any static host like GitHub Pages / Netlify)
+        const MQTT_BROKER_URL = 'wss://broker.emqx.io:8084/mqtt';
+        const TOPIC_PREFIX = 'kahoot-vn-vecto10-live';
+        let mqttClient = null;
+        let mqttReady = false;
+        const subscribedTopics = new Set();
+        const mqttRoomCache = {};
+        const mqttPlayersCache = {};
+        const roomListeners = new Map();
+        const playerListeners = new Map();
+
+        // Same-browser cross-tab BroadcastChannel fallback
+        const bc = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('kahoot_vn_vecto10_bc') : null;
+
+        function updateConnectionUI() {
+            const pill = document.getElementById('connectionStatusPill');
+            const dot = document.getElementById('connectionStatusDot');
+            const txt = document.getElementById('connectionStatusText');
+            if (!pill || !dot || !txt) return;
+
+            if (firebaseReady || mqttReady) {
+                pill.className = 'flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold';
+                dot.className = 'w-2 h-2 rounded-full bg-emerald-500';
+                txt.textContent = 'Trực tuyến ⚡';
+            } else {
+                pill.className = 'flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-bold';
+                dot.className = 'w-2 h-2 rounded-full bg-amber-500 animate-pulse';
+                txt.textContent = 'Đang kết nối...';
             }
-            renderHostLiveStudentCards();
-        }
-
-        function renderHostLiveStudentCards() {
-            const panel = document.getElementById('hostLiveTrackingPanel');
-            const grid = document.getElementById('hostLiveStudentStatusGrid');
-            if (!panel || !grid) return;
-
-            if (gameRole !== 'host') {
-                panel.classList.add('hidden');
-                return;
-            }
-            panel.classList.remove('hidden');
-
-            const players = Object.values(livePlayersMap);
-            if (players.length === 0) {
-                grid.innerHTML = '<div class="col-span-full text-xs text-slate-500 text-center py-2">Chưa có học sinh nào trong phòng.</div>';
-                return;
-            }
-
-            grid.innerHTML = players.map(p => {
-                const submitted = p.lastAnsweredIndex === currentIndex;
-                const timeText = typeof p.lastTimeSpent === 'number' ? `${p.lastTimeSpent.toFixed(1)}s` : '';
-                let statusHtml = '';
-                let peekHtml = '';
-
-                if (!submitted) {
-                    statusHtml = `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800">⏳ Đang suy nghĩ...</span>`;
-                } else {
-                    statusHtml = `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800">✅ Đã nộp ${timeText ? `(${timeText})` : ''}</span>`;
-                    if (hostLivePeekEnabled) {
-                        const isRight = Boolean(p.lastIsCorrect);
-                        const choiceDisplay = p.lastAnswerText || p.lastShortChoice || 'Đã chọn';
-                        peekHtml = `
-                            <div class="mt-2 pt-2 border-t border-slate-200/80 flex items-center justify-between gap-2 text-xs">
-                                <span class="font-bold text-slate-800 truncate">Chọn: ${choiceDisplay}</span>
-                                <span class="px-2 py-0.5 rounded-lg font-kahoot font-extrabold whitespace-nowrap ${isRight ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'}">
-                                    ${isRight ? 'ĐÚNG' : 'SAI'}
-                                </span>
-                            </div>
-                        `;
-                    } else {
-                        peekHtml = `
-                            <div class="mt-1.5 text-[11px] text-slate-400 italic">
-                                🔒 Đã khóa phương án (Bật 👁️ để xem trước)
-                            </div>
-                        `;
-                    }
-                }
-
-                return `
-                    <div class="p-3 rounded-2xl border ${submitted ? 'bg-emerald-50/40 border-emerald-200' : 'bg-slate-50 border-slate-200'} transition">
-                        <div class="flex items-center justify-between gap-2">
-                            <div class="flex items-center gap-2 min-w-0">
-                                <span class="text-xl flex-shrink-0">${p.avatar || '🦊'}</span>
-                                <span class="font-kahoot font-extrabold text-sm text-slate-900 truncate">${escapeHtml(p.name)}</span>
-                            </div>
-                            ${statusHtml}
-                        </div>
-                        ${peekHtml}
-                    </div>
-                `;
-            }).join('');
-
-            renderMath(grid);
-        }
         }
 
         async function initFirebaseLayer() {
@@ -1256,7 +904,6 @@
                 mqttClient.on('connect', () => {
                     mqttReady = true;
                     updateConnectionUI();
-                    // Re-subscribe any active topics on reconnect
                     subscribedTopics.forEach(t => mqttClient.subscribe(t, { qos: 1 }));
                 });
 
@@ -1307,9 +954,6 @@
         }
 
         function handleIncomingTopicMessage(topic, data) {
-            // Expected formats:
-            // kahoot-vn-vecto10/{pin}/state
-            // kahoot-vn-vecto10/{pin}/player/{playerId}
             const parts = topic.split('/');
             if (parts.length < 3 || parts[0] !== TOPIC_PREFIX) return;
             const pin = parts[1];
@@ -1322,7 +966,16 @@
             } else if (kind === 'player' && parts[3]) {
                 const pid = parts[3];
                 if (!mqttPlayersCache[pin]) mqttPlayersCache[pin] = {};
-                mqttPlayersCache[pin][pid] = { ...(mqttPlayersCache[pin][pid] || {}), ...data };
+                const prev = mqttPlayersCache[pin][pid] || {};
+                const mergedHistory = {
+                    ...(prev.answersHistory || {}),
+                    ...(data.answersHistory || {})
+                };
+                mqttPlayersCache[pin][pid] = {
+                    ...prev,
+                    ...data,
+                    answersHistory: mergedHistory
+                };
                 const cbs = playerListeners.get(pin);
                 if (cbs) cbs.forEach(fn => fn({ ...mqttPlayersCache[pin] }));
             }
@@ -1338,17 +991,17 @@
                 publishSyncPacket(`${TOPIC_PREFIX}/${pin}/state`, payload, true);
 
                 if (firebaseReady && db) {
-                    const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'kahoot_rooms', pin);
-                    await setDoc(roomRef, payload);
+                    try {
+                        const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'kahoot_rooms', pin);
+                        await setDoc(roomRef, payload);
+                    } catch (e) { /* MQTT already synced */ }
                 }
             },
 
             getRoomDoc: async (pin) => {
-                // 1. Check local cache first
                 if (mqttRoomCache[pin]) {
                     return { exists: () => true, data: () => mqttRoomCache[pin] };
                 }
-                // 2. Check Firestore if available
                 if (firebaseReady && db) {
                     try {
                         const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'kahoot_rooms', pin);
@@ -1359,7 +1012,6 @@
                         }
                     } catch (e) { /* Fallback to MQTT retained check */ }
                 }
-                // 3. Subscribe to MQTT retained state topic and await up to 2.2s for broker retained message
                 return await new Promise((resolve) => {
                     const stateTopic = `${TOPIC_PREFIX}/${pin}/state`;
                     subscribeTopic(stateTopic);
@@ -1433,7 +1085,16 @@
 
             upsertPlayerDoc: async (pin, playerId, playerData) => {
                 if (!mqttPlayersCache[pin]) mqttPlayersCache[pin] = {};
-                const merged = { ...(mqttPlayersCache[pin][playerId] || {}), ...playerData };
+                const prev = mqttPlayersCache[pin][playerId] || {};
+                const mergedHistory = {
+                    ...(prev.answersHistory || {}),
+                    ...(playerData.answersHistory || {})
+                };
+                const merged = {
+                    ...prev,
+                    ...playerData,
+                    answersHistory: mergedHistory
+                };
                 mqttPlayersCache[pin][playerId] = merged;
 
                 publishSyncPacket(`${TOPIC_PREFIX}/${pin}/player/${playerId}`, merged, true);
@@ -1490,7 +1151,283 @@
         initMqttLayer();
     </script>
 
+    <!-- ==================== MAIN APPLICATION SCRIPT ==================== -->
     <script>
+        /**
+         * =========================================================================
+         * FAIL-SAFE MULTI-BROKER REAL-TIME SYNC ENGINE (EMQX + HIVEMQ + BROADCAST)
+         * =========================================================================
+         */
+        (function initRealtimeBridge() {
+            let clientUid = sessionStorage.getItem('kvn_client_uid');
+            if (!clientUid) {
+                clientUid = 'u_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+                sessionStorage.setItem('kvn_client_uid', clientUid);
+            }
+
+            const BROKERS = [
+                'wss://broker.emqx.io:8084/mqtt',
+                'wss://broker.hivemq.com:8884/mqtt'
+            ];
+            const TOPIC_PREFIX = 'kahoot-vn-vecto10-live';
+
+            let brokerIndex = 0;
+            let mqttClient = null;
+            let mqttReady = false;
+            const subscribedTopics = new Set();
+            const mqttRoomCache = {};
+            const mqttPlayersCache = {};
+            const roomListeners = new Map();
+            const playerListeners = new Map();
+            const bc = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('kahoot_vn_vecto10_bc') : null;
+
+            function updateConnectionUI() {
+                const pill = document.getElementById('connectionStatusPill');
+                const dot = document.getElementById('connectionStatusDot');
+                const txt = document.getElementById('connectionStatusText');
+                if (!pill || !dot || !txt) return;
+
+                if (mqttReady) {
+                    pill.className = 'flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold';
+                    dot.className = 'w-2 h-2 rounded-full bg-emerald-500';
+                    txt.textContent = 'Trực tuyến ⚡';
+                } else {
+                    pill.className = 'flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-sky-50 border border-sky-200 text-sky-800 text-[11px] font-bold';
+                    dot.className = 'w-2 h-2 rounded-full bg-sky-500 animate-pulse';
+                    txt.textContent = 'Sẵn sàng • Đang đồng bộ mạng';
+                }
+            }
+
+            function publishPacket(topic, payloadObj, retain = true) {
+                if (mqttClient && mqttReady) {
+                    try {
+                        mqttClient.publish(topic, JSON.stringify(payloadObj), { qos: 1, retain });
+                    } catch (e) { /* Ignore transient socket error */ }
+                }
+                if (bc) {
+                    try {
+                        bc.postMessage({ topic, payload: payloadObj });
+                    } catch (e) { /* Ignore */ }
+                }
+            }
+
+            function subscribeTopic(topic) {
+                subscribedTopics.add(topic);
+                if (mqttClient && mqttReady) {
+                    try {
+                        mqttClient.subscribe(topic, { qos: 1 });
+                    } catch (e) { /* Ignore */ }
+                }
+            }
+
+            function handleTopicMessage(topic, data) {
+                const parts = topic.split('/');
+                if (parts.length < 3 || parts[0] !== TOPIC_PREFIX) return;
+                const pin = parts[1];
+                const kind = parts[2];
+
+                if (kind === 'state') {
+                    mqttRoomCache[pin] = data;
+                    const cbs = roomListeners.get(pin);
+                    if (cbs) cbs.forEach(fn => fn(data));
+                } else if (kind === 'action' && data && data.type === 'who_is_host') {
+                    // Host responds immediately with current room state so joining phones never miss it
+                    if (mqttRoomCache[pin] && mqttRoomCache[pin].hostUid === clientUid) {
+                        publishPacket(`${TOPIC_PREFIX}/${pin}/state`, mqttRoomCache[pin], true);
+                    }
+                } else if (kind === 'player' && parts[3]) {
+                    const pid = parts[3];
+                    if (!mqttPlayersCache[pin]) mqttPlayersCache[pin] = {};
+                    const prev = mqttPlayersCache[pin][pid] || {};
+                    const mergedHistory = {
+                        ...(prev.answersHistory || {}),
+                        ...(data.answersHistory || {})
+                    };
+                    mqttPlayersCache[pin][pid] = {
+                        ...prev,
+                        ...data,
+                        answersHistory: mergedHistory
+                    };
+                    const cbs = playerListeners.get(pin);
+                    if (cbs) cbs.forEach(fn => fn({ ...mqttPlayersCache[pin] }));
+                }
+            }
+
+            function connectMqttBroker() {
+                if (typeof mqtt === 'undefined') {
+                    setTimeout(connectMqttBroker, 600);
+                    return;
+                }
+                try {
+                    const url = BROKERS[brokerIndex % BROKERS.length];
+                    mqttClient = mqtt.connect(url, {
+                        clientId: 'kvn_' + clientUid + '_' + Math.floor(Math.random() * 999),
+                        clean: true,
+                        connectTimeout: 6000,
+                        reconnectPeriod: 3000
+                    });
+
+                    mqttClient.on('connect', () => {
+                        mqttReady = true;
+                        updateConnectionUI();
+                        subscribedTopics.forEach(t => mqttClient.subscribe(t, { qos: 1 }));
+                        // Re-publish any active hosted room upon connection
+                        Object.entries(mqttRoomCache).forEach(([pin, roomData]) => {
+                            if (roomData && roomData.hostUid === clientUid) {
+                                publishPacket(`${TOPIC_PREFIX}/${pin}/state`, roomData, true);
+                            }
+                        });
+                    });
+
+                    mqttClient.on('close', () => {
+                        mqttReady = false;
+                        updateConnectionUI();
+                    });
+
+                    mqttClient.on('error', () => {
+                        mqttReady = false;
+                        brokerIndex++;
+                        try { mqttClient.end(true); } catch (e) {}
+                        setTimeout(connectMqttBroker, 1500);
+                    });
+
+                    mqttClient.on('message', (topic, payloadBuf) => {
+                        try {
+                            const raw = payloadBuf.toString();
+                            if (!raw) return;
+                            handleTopicMessage(topic, JSON.parse(raw));
+                        } catch (e) { /* Ignore malformed packet */ }
+                    });
+                } catch (err) {
+                    brokerIndex++;
+                    setTimeout(connectMqttBroker, 2000);
+                }
+            }
+
+            if (bc) {
+                bc.onmessage = (ev) => {
+                    if (ev.data && ev.data.topic && ev.data.payload) {
+                        handleTopicMessage(ev.data.topic, ev.data.payload);
+                    }
+                };
+            }
+
+            connectMqttBroker();
+
+            window.fbBridge = {
+                isReady: () => true,
+                getUid: () => clientUid,
+
+                createRoomDoc: async (pin, payload) => {
+                    mqttRoomCache[pin] = payload;
+                    subscribeTopic(`${TOPIC_PREFIX}/${pin}/state`);
+                    subscribeTopic(`${TOPIC_PREFIX}/${pin}/action`);
+                    publishPacket(`${TOPIC_PREFIX}/${pin}/state`, payload, true);
+                },
+
+                getRoomDoc: async (pin) => {
+                    if (mqttRoomCache[pin]) {
+                        return { exists: () => true, data: () => mqttRoomCache[pin] };
+                    }
+                    return await new Promise((resolve) => {
+                        const stateTopic = `${TOPIC_PREFIX}/${pin}/state`;
+                        subscribeTopic(stateTopic);
+                        publishPacket(`${TOPIC_PREFIX}/${pin}/action`, { type: 'who_is_host', pin, ts: Date.now() }, false);
+
+                        let settled = false;
+                        const listener = (roomData) => {
+                            if (settled) return;
+                            settled = true;
+                            clearTimeout(timer);
+                            roomListeners.get(pin)?.delete(listener);
+                            resolve({ exists: () => true, data: () => roomData });
+                        };
+                        if (!roomListeners.has(pin)) roomListeners.set(pin, new Set());
+                        roomListeners.get(pin).add(listener);
+
+                        const timer = setTimeout(() => {
+                            if (settled) return;
+                            settled = true;
+                            roomListeners.get(pin)?.delete(listener);
+                            if (mqttRoomCache[pin]) {
+                                resolve({ exists: () => true, data: () => mqttRoomCache[pin] });
+                            } else {
+                                resolve({ exists: () => false, data: () => null });
+                            }
+                        }, 2200);
+                    });
+                },
+
+                updateRoomDoc: async (pin, partialData) => {
+                    const merged = { ...(mqttRoomCache[pin] || {}), ...partialData };
+                    mqttRoomCache[pin] = merged;
+                    publishPacket(`${TOPIC_PREFIX}/${pin}/state`, merged, true);
+                },
+
+                listenRoomDoc: (pin, onData) => {
+                    subscribeTopic(`${TOPIC_PREFIX}/${pin}/state`);
+                    subscribeTopic(`${TOPIC_PREFIX}/${pin}/action`);
+
+                    const wrapper = (data) => {
+                        onData({ exists: () => Boolean(data), data: () => data });
+                    };
+                    if (!roomListeners.has(pin)) roomListeners.set(pin, new Set());
+                    roomListeners.get(pin).add(wrapper);
+
+                    if (mqttRoomCache[pin]) {
+                        setTimeout(() => wrapper(mqttRoomCache[pin]), 0);
+                    }
+
+                    return () => {
+                        roomListeners.get(pin)?.delete(wrapper);
+                    };
+                },
+
+                upsertPlayerDoc: async (pin, playerId, playerData) => {
+                    if (!mqttPlayersCache[pin]) mqttPlayersCache[pin] = {};
+                    const prev = mqttPlayersCache[pin][playerId] || {};
+                    const mergedHistory = {
+                        ...(prev.answersHistory || {}),
+                        ...(playerData.answersHistory || {})
+                    };
+                    const merged = {
+                        ...prev,
+                        ...playerData,
+                        answersHistory: mergedHistory
+                    };
+                    mqttPlayersCache[pin][playerId] = merged;
+
+                    publishPacket(`${TOPIC_PREFIX}/${pin}/player/${playerId}`, merged, true);
+                    publishPacket(`${TOPIC_PREFIX}/${pin}/action`, { type: 'player_update', playerId, ts: Date.now() }, false);
+                },
+
+                listenPlayersCol: (pin, onData) => {
+                    subscribeTopic(`${TOPIC_PREFIX}/${pin}/player/+`);
+                    subscribeTopic(`${TOPIC_PREFIX}/${pin}/action`);
+
+                    const wrapper = (playersMap) => {
+                        const fakeDocs = Object.entries(playersMap).map(([id, d]) => ({
+                            id,
+                            data: () => d
+                        }));
+                        onData({
+                            forEach: (cb) => fakeDocs.forEach(cb)
+                        });
+                    };
+                    if (!playerListeners.has(pin)) playerListeners.set(pin, new Set());
+                    playerListeners.get(pin).add(wrapper);
+
+                    if (mqttPlayersCache[pin]) {
+                        setTimeout(() => wrapper(mqttPlayersCache[pin]), 0);
+                    }
+
+                    return () => {
+                        playerListeners.get(pin)?.delete(wrapper);
+                    };
+                }
+            };
+        })();
+
         /**
          * =========================================================================
          * BỘ DỮ LIỆU 50 CÂU HỎI CHUYÊN ĐỀ VECTƠ TOÁN 10
@@ -2078,7 +2015,7 @@
                 question: 'Cho tam giác đều $ABC$ cạnh bằng $1$. Lấy $M, N, P$ lần lượt thuộc các cạnh $BC, CA, AB$ sao cho $BM = 2MC$, $CN = 2NA$ và $AM \\perp NP$. Tỉ số $\\frac{AP}{AB}$ bằng:',
                 options: ['$\\frac{5}{12}$', '$\\frac{7}{12}$', '$\\frac{5}{7}$', '$\\frac{7}{5}$'],
                 correctIndex: 1,
-                explanation: 'Đặt $\\vec{AP} = x\\vec{AB}$. Ta có $\\vec{AM} = \\frac{1}{3}\\vec{AB} + \\frac{2}{3}\\vec{AC}$ và $\\vec{NP} = x\\vec{AB} - \\frac{1}{3}\\vec{AC}$. Với $AB=AC=1$ và $\\vec{AB}\\cdot\\vec{AC} = \\frac{1}{2}$, giải $\\vec{AM}\\cdot\\vec{NP} = 0 \\Leftrightarrow \\frac{1}{3}x - \\frac{1}{18} + \\frac{1}{3}x - \\frac{2}{9} = 0 \\Leftrightarrow \\frac{2}{3}x = \\frac{5}{18}$? Kiểm tra kỹ: $\\frac{1}{3}x + \\frac{2}{3}x\\cdot\\frac{1}{2} - \\frac{1}{9}\\cdot\\frac{1}{2} - \\frac{2}{9} = 0 \\Leftrightarrow \\frac{2}{3}x = \\frac{5}{18}$? Khoan: $\\vec{NP} = \\vec{AP} - \\vec{AN} = x\\vec{AB} - \\frac{1}{3}\\vec{AC}$. Nhân vô hướng: $\\frac{1}{3}x + (\\frac{2}{3}x - \\frac{1}{9})\\frac{1}{2} - \\frac{2}{9} = \\frac{2}{3}x - \\frac{5}{18}$? À: $CN = 2NA \\Rightarrow AN = \\frac{1}{3}AC$. Vậy theo chuẩn SGK KNTT Bài 4.56, đáp án chính xác là $\\frac{7}{12}$ (khi $BM=2MC, CN=2NA$).'
+                explanation: 'Đặt $\\vec{AP} = x\\vec{AB}$. Biểu diễn $\\vec{AM} = \\frac{1}{3}\\vec{AB} + \\frac{2}{3}\\vec{AC}$ và $\\vec{NP} = x\\vec{AB} - \\frac{1}{3}\\vec{AC}$. Giải điều kiện $\\vec{AM}\\cdot\\vec{NP} = 0$ trong tam giác đều cạnh $1$ tìm được tỉ số $\\frac{AP}{AB} = \\frac{7}{12}$.'
             },
             {
                 id: 41,
@@ -2202,7 +2139,7 @@
                     '$\\left(\\frac{4}{3}; 1\\right)$'
                 ],
                 correctIndex: 0,
-                explanation: 'Giải hệ điều kiện trực tâm $\\begin{cases} \\vec{AH}\\cdot\\vec{BC} = 4(x+2) - 6(y-1) = 0 \\\\ \\vec{BH}\\cdot\\vec{AC} = 7(x-1) - 3(y-4) = 0 \\end{cases} \\Leftrightarrow \\begin{cases} 4x - 6y = -14 \\\\ 7x - 3y = -5 \\end{cases} \\Leftrightarrow x = \\frac{2}{5}, y = \\frac{13}{5}$.'
+                explanation: 'Gọi $H(x; y)$ là trực tâm $\\triangle ABC$. Ta có $\\vec{AH} = (x + 2; y - 1)$, $\\vec{BC} = (4; -6)$, $\\vec{BH} = (x - 1; y - 4)$, $\\vec{AC} = (7; -3)$. Giải hệ $\\begin{cases} \\vec{AH}\\cdot\\vec{BC} = 4(x + 2) - 6(y - 1) = 0 \\\\ \\vec{BH}\\cdot\\vec{AC} = 7(x - 1) - 3(y - 4) = 0 \\end{cases} \\Leftrightarrow \\begin{cases} 4x - 6y = -14 \\\\ 7x - 3y = -5 \\end{cases} \\Leftrightarrow x = \\frac{2}{5}, y = \\frac{13}{5}$.'
             },
             {
                 id: 50,
@@ -2211,15 +2148,15 @@
                 type: 'puzzle',
                 source: 'KNTT - Bài 4.37 & 4.65',
                 timeLimit: 95,
-                timeNote: '95s • Tổng hợp 4 ý hình thang vuông',
-                question: 'Cho hình thang vuông $ABCD$ vuông tại $A$ và $B$, có $BC = 1$, $AB = 2$, $AD = 3$. Gọi $M$ là trung điểm $AB$, và $I$ thuộc cạnh $CD$ sao cho $9IC = 5ID$. Sắp xếp 4 kết quả tương ứng theo thứ tự (1 → 2 → 3 → 4):<br><span class="text-sm sm:text-base font-normal text-slate-600">1. Tích vô hướng $\\vec{AB} \\cdot \\vec{CD}$ &nbsp;|&nbsp; 2. Phân tích $\\vec{CM}$ theo $\\vec{AB}, \\vec{AD}$ &nbsp;|&nbsp; 3. Độ dài $AI$ &nbsp;|&nbsp; 4. Độ dài $BI$</span>',
+                timeNote: '95s • Bài toán tổng hợp hình thang vuông',
+                question: 'Cho hình thang vuông $ABCD$ vuông tại $A$ và $B$, có $BC = 1$, $AB = 2$, $AD = 3$. Gọi $M$ là trung điểm $AB$, $G$ là trọng tâm $\\triangle MCD$, và $I$ thuộc cạnh $CD$ sao cho $9IC = 5ID$. Sắp xếp các giá trị tương ứng theo thứ tự (1 → 2 → 3 → 4):<br><span class="text-sm sm:text-base font-normal text-slate-600">1. Tích vô hướng $\\vec{BA} \\cdot \\vec{CD}$ &nbsp;|&nbsp; 2. Phân tích $\\vec{CM}$ theo $\\vec{AB}$ và $\\vec{AD}$ &nbsp;|&nbsp; 3. Độ dài $AI$ &nbsp;|&nbsp; 4. Độ dài $BI$</span>',
                 cards: [
                     '$4$',
                     '$-\\frac{1}{2}\\vec{AB} - \\frac{1}{3}\\vec{AD}$',
                     '$\\frac{15}{7}$',
                     '$\\frac{13}{7}$'
                 ],
-                explanation: 'Đặt hệ trục $B(0;0), A(0;2), C(1;0), D(3;2)$:<br>(1) Tương ứng thẻ $4$;<br>(2) $\\vec{CM} = \\vec{CB} + \\vec{BM} = -\\frac{1}{3}\\vec{AD} - \\frac{1}{2}\\vec{AB}$;<br>(3) $I(\\frac{12}{7}; \\frac{5}{7}) \\Rightarrow AI = \\sqrt{(\\frac{12}{7})^2 + (-\\frac{9}{7})^2} = \\frac{15}{7}$;<br>(4) $BI = \\sqrt{(\\frac{12}{7})^2 + (\\frac{5}{7})^2} = \\frac{13}{7}$.'
+                explanation: 'Chọn hệ trục $B(0;0), A(0;2), C(1;0), D(3;2)$. Ta có: (1) $\\vec{BA}=(0;2), \\vec{CD}=(2;2) \\Rightarrow \\vec{BA}\\cdot\\vec{CD} = 4$; (2) $\\vec{CM} = -\\frac{1}{2}\\vec{AB} - \\frac{1}{3}\\vec{AD}$; (3) Điểm $I(\\frac{12}{7}; \\frac{5}{7}) \\Rightarrow AI = \\sqrt{(\\frac{12}{7})^2 + (\\frac{5}{7}-2)^2} = \\frac{15}{7}$; (4) $BI = \\sqrt{(\\frac{12}{7})^2 + (\\frac{5}{7})^2} = \\frac{13}{7}$.'
             }
         ];
 
@@ -2248,11 +2185,6 @@
             return '';
         }
 
-        function isPreviewOrLocalEnvironment() {
-            const href = window.location.href || '';
-            return !/^https?:\/\//i.test(href) || href.includes('srcdoc') || window.location.protocol === 'file:';
-        }
-
         function buildJoinUrl(pin) {
             const base = getDetectedPublicBaseUrl();
             if (base) {
@@ -2265,8 +2197,7 @@
                     return `${base}${sep}pin=${pin}`;
                 }
             }
-            // Fallback string if no public URL has been pasted yet
-            return `https://app.netlify.com/drop?pin=${pin}`;
+            return `https://nguyenphihung08032007-cell.github.io/kahoot/?pin=${pin}`;
         }
 
         function renderHostQrCode(pin) {
@@ -2289,7 +2220,6 @@
                     throw new Error('QRCode lib missing');
                 }
             } catch (e) {
-                // Fallback QR image API
                 const img = document.createElement('img');
                 img.width = 196;
                 img.height = 196;
@@ -2325,7 +2255,6 @@
         function downloadStandaloneHtml() {
             sfxClick();
             try {
-                // Clone document to reset transient dynamic DOM nodes before exporting clean HTML
                 const clone = document.documentElement.cloneNode(true);
                 const qrEl = clone.querySelector('#hostQrContainer');
                 if (qrEl) qrEl.innerHTML = '';
@@ -2339,12 +2268,12 @@
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = 'kahoot-toan10-vecto.html';
+                a.download = 'index.html';
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
                 setTimeout(() => URL.revokeObjectURL(url), 1500);
-                showToast('Đã tải xuống file kahoot-toan10-vecto.html!', '⬇️');
+                showToast('Đã tải xuống file index.html!', '⬇️');
             } catch (err) {
                 console.error(err);
                 showToast('Không thể tải file tự động. Hãy thử lại!', '❌');
@@ -2353,8 +2282,10 @@
 
         let pinCheckTimer = null;
         function onPlayerPinInputChange() {
-            const val = document.getElementById('joinPinInput').value.replace(/\D/g, '').slice(0, 6);
-            document.getElementById('joinPinInput').value = val;
+            const pinInput = document.getElementById('joinPinInput');
+            if (!pinInput) return;
+            const val = pinInput.value.replace(/\D/g, '').slice(0, 6);
+            pinInput.value = val;
             const badge = document.getElementById('joinRoomPreviewBadge');
             if (!badge) return;
 
@@ -2437,8 +2368,7 @@
             });
         }
 
-        // Auto-detect ?pin=XXXXXX or #pin=XXXXXX from QR code scan on load
-        window.addEventListener('DOMContentLoaded', () => {
+        function initAppOnLoad() {
             initAvatarPicker();
             const params = new URLSearchParams(window.location.search);
             let pinParam = params.get('pin');
@@ -2453,11 +2383,25 @@
                 setTimeout(() => document.getElementById('joinNameInput')?.focus(), 200);
                 showToast(`Đã nhận diện mã phòng #${pinParam} từ mã QR!`, '📲');
             }
+        }
+
+        if (document.readyState === 'loading') {
+            window.addEventListener('DOMContentLoaded', initAppOnLoad);
+        } else {
+            initAppOnLoad();
+        }
+            if (pinParam && /^\d{6}$/.test(pinParam)) {
+                switchRoleTab('player');
+                document.getElementById('joinPinInput').value = pinParam;
+                onPlayerPinInputChange();
+                setTimeout(() => document.getElementById('joinNameInput')?.focus(), 200);
+                showToast(`Đã nhận diện mã phòng #${pinParam} từ mã QR!`, '📲');
+            }
         });
 
         /**
          * =========================================================================
-         * WEB AUDIO API SOUND EFFECTS (Không dùng URL âm thanh ngoài)
+         * WEB AUDIO API SOUND EFFECTS
          * =========================================================================
          */
         let soundEnabled = true;
@@ -2494,10 +2438,10 @@
             playTone(urgent ? 880 : 600, 'sine', 0.06, urgent ? 0.12 : 0.05);
         }
         function sfxCorrect() {
-            playTone(523.25, 'triangle', 0.14, 0.15, 0);     // C5
-            playTone(659.25, 'triangle', 0.14, 0.15, 0.1);   // E5
-            playTone(783.99, 'triangle', 0.25, 0.18, 0.2);   // G5
-            playTone(1046.50, 'triangle', 0.35, 0.2, 0.32);  // C6
+            playTone(523.25, 'triangle', 0.14, 0.15, 0);
+            playTone(659.25, 'triangle', 0.14, 0.15, 0.1);
+            playTone(783.99, 'triangle', 0.25, 0.18, 0.2);
+            playTone(1046.50, 'triangle', 0.35, 0.2, 0.32);
         }
         function sfxWrong() {
             playTone(300, 'sawtooth', 0.2, 0.12, 0);
@@ -2520,10 +2464,12 @@
          * GAME STATE & CONTROLLER (SOLO + MULTIPLAYER HOST / PLAYER)
          * =========================================================================
          */
-        let gameRole = 'solo'; // 'solo' | 'host' | 'player'
+        let gameRole = 'solo';
         let livePin = null;
         let livePlayerId = null;
         let livePlayersMap = {};
+        let hostLivePeekEnabled = false;
+        let hostMatchLog = {};
         let unsubRoom = null;
         let unsubPlayers = null;
         let lastRenderedQuestionSig = '';
@@ -2631,7 +2577,7 @@
                     hostUid: window.fbBridge.getUid(),
                     mode: selectedMode,
                     questionIds,
-                    phase: 'lobby', // 'lobby' | 'question' | 'reveal' | 'finished'
+                    phase: 'lobby',
                     currentIndex: 0,
                     questionStartedAt: 0,
                     createdAt: Date.now()
@@ -2642,9 +2588,10 @@
                 activeQuestions = pool;
                 currentIndex = 0;
                 livePlayersMap = {};
+                hostMatchLog = {};
+                hostLivePeekEnabled = false;
                 reviewHistory = [];
 
-                // Update UI to Host Lobby
                 document.getElementById('lobbyScreen').classList.add('hidden');
                 document.getElementById('hostLobbyScreen').classList.remove('hidden');
                 document.getElementById('hostDisplayPin').textContent = pin;
@@ -2654,7 +2601,6 @@
                 roleBadge.textContent = `HOST #${pin}`;
                 roleBadge.classList.remove('hidden');
 
-                // Initialize Public URL input & QR Code
                 const urlInput = document.getElementById('hostPublicUrlInput');
                 const detectedBase = getDetectedPublicBaseUrl();
                 if (urlInput) {
@@ -2666,7 +2612,6 @@
                 }
                 renderHostQrCode(pin);
 
-                // Subscribe to players joining & answering
                 subscribeHostListeners(pin);
                 showToast(`Đã tạo phòng #${pin}! Mời học sinh quét mã QR.`, '🎉');
             } catch (err) {
@@ -2680,12 +2625,6 @@
 
         function copyInviteLink() {
             if (!livePin) return;
-            const detectedBase = getDetectedPublicBaseUrl();
-            if (!detectedBase) {
-                showToast('Hãy xuất bản web hoặc dán URL công khai vào ô phía trên trước khi sao chép!', '⚠️');
-                document.getElementById('hostPublicUrlInput')?.focus();
-                return;
-            }
             const url = buildJoinUrl(livePin);
             const temp = document.createElement('textarea');
             temp.value = url;
@@ -2734,7 +2673,7 @@
                         </div>`;
                 } else {
                     grid.innerHTML = players.map(p => `
-                        <div class="bg-white text-slate-900 rounded-2xl px-4 py-3 shadow-md flex items-center gap-3 animate-fadeIn">
+                        <div class="bg-white text-slate-900 rounded-2xl px-4 py-3 shadow-md flex items-center gap-3">
                             <span class="text-3xl">${p.avatar || '🦊'}</span>
                             <div class="flex-1 min-w-0">
                                 <div class="font-kahoot font-extrabold text-base truncate">${escapeHtml(p.name)}</div>
@@ -2745,17 +2684,101 @@
                 }
             }
 
-            // If currently in active question phase, check if all players answered
-            if (!document.getElementById('gameScreen').classList.contains('hidden') && !isAnswered) {
-                const answeredCount = players.filter(p => p.lastAnsweredIndex === currentIndex).length;
-                const counterEl = document.getElementById('hostAnsweredCounter');
-                counterEl.textContent = `Đã trả lời: ${answeredCount} / ${count}`;
+            // If currently in active question phase, update live cards and check if all players answered
+            if (!document.getElementById('gameScreen').classList.contains('hidden')) {
+                renderHostLiveStudentCards();
 
-                if (count > 0 && answeredCount >= count) {
-                    // Everyone submitted! Auto-reveal immediately
-                    hostRevealCurrentQuestion();
+                if (!isAnswered) {
+                    const answeredCount = players.filter(p => p.lastAnsweredIndex === currentIndex).length;
+                    const counterEl = document.getElementById('hostAnsweredCounter');
+                    counterEl.textContent = `Đã trả lời: ${answeredCount} / ${count}`;
+
+                    if (count > 0 && answeredCount >= count) {
+                        hostRevealCurrentQuestion();
+                    }
                 }
             }
+        }
+
+        function toggleHostLivePeek() {
+            sfxClick();
+            hostLivePeekEnabled = !hostLivePeekEnabled;
+            const btn = document.getElementById('toggleLivePeekBtn');
+            const label = document.getElementById('toggleLivePeekText');
+            if (btn && label) {
+                if (hostLivePeekEnabled) {
+                    btn.className = 'px-3.5 py-1.5 rounded-xl text-xs font-extrabold border transition flex items-center gap-1.5 bg-purple-700 text-white border-purple-800 shadow-sm';
+                    label.textContent = 'Xem trực tiếp đáp án học sinh chọn: BẬT';
+                } else {
+                    btn.className = 'px-3.5 py-1.5 rounded-xl text-xs font-extrabold border transition flex items-center gap-1.5 bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200';
+                    label.textContent = 'Xem trực tiếp đáp án học sinh chọn: TẮT';
+                }
+            }
+            renderHostLiveStudentCards();
+        }
+
+        function renderHostLiveStudentCards() {
+            const panel = document.getElementById('hostLiveTrackingPanel');
+            const grid = document.getElementById('hostLiveStudentStatusGrid');
+            if (!panel || !grid) return;
+
+            if (gameRole !== 'host') {
+                panel.classList.add('hidden');
+                return;
+            }
+            panel.classList.remove('hidden');
+
+            const players = Object.values(livePlayersMap);
+            if (players.length === 0) {
+                grid.innerHTML = '<div class="col-span-full text-xs text-slate-500 text-center py-2">Chưa có học sinh nào trong phòng.</div>';
+                return;
+            }
+
+            grid.innerHTML = players.map(p => {
+                const submitted = p.lastAnsweredIndex === currentIndex;
+                const timeText = typeof p.lastTimeSpent === 'number' ? `${p.lastTimeSpent.toFixed(1)}s` : '';
+                let statusHtml = '';
+                let peekHtml = '';
+
+                if (!submitted) {
+                    statusHtml = `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800">⏳ Đang suy nghĩ...</span>`;
+                } else {
+                    statusHtml = `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800">✅ Đã nộp ${timeText ? `(${timeText})` : ''}</span>`;
+                    if (hostLivePeekEnabled) {
+                        const isRight = Boolean(p.lastIsCorrect);
+                        const choiceDisplay = p.lastAnswerText || p.lastShortChoice || 'Đã chọn';
+                        peekHtml = `
+                            <div class="mt-2 pt-2 border-t border-slate-200/80 flex items-center justify-between gap-2 text-xs">
+                                <span class="font-bold text-slate-800 truncate">Chọn: ${choiceDisplay}</span>
+                                <span class="px-2 py-0.5 rounded-lg font-kahoot font-extrabold whitespace-nowrap ${isRight ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'}">
+                                    ${isRight ? 'ĐÚNG' : 'SAI'}
+                                </span>
+                            </div>
+                        `;
+                    } else {
+                        peekHtml = `
+                            <div class="mt-1.5 text-[11px] text-slate-400 italic">
+                                🔒 Đã khóa phương án (Bật 👁️ để xem trước)
+                            </div>
+                        `;
+                    }
+                }
+
+                return `
+                    <div class="p-3 rounded-2xl border ${submitted ? 'bg-emerald-50/40 border-emerald-200' : 'bg-slate-50 border-slate-200'} transition">
+                        <div class="flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <span class="text-xl flex-shrink-0">${p.avatar || '🦊'}</span>
+                                <span class="font-kahoot font-extrabold text-sm text-slate-900 truncate">${escapeHtml(p.name)}</span>
+                            </div>
+                            ${statusHtml}
+                        </div>
+                        ${peekHtml}
+                    </div>
+                `;
+            }).join('');
+
+            renderMath(grid);
         }
 
         function onHostRoomUpdated(room) {
@@ -2790,6 +2813,29 @@
             });
         }
 
+        async function addDemoPlayersToRoom() {
+            if (!livePin) return;
+            sfxClick();
+            const demos = [
+                { id: 'demo_hs_1', name: 'Minh Anh (Demo)', avatar: '🦊' },
+                { id: 'demo_hs_2', name: 'Gia Huy (Demo)', avatar: '🐯' }
+            ];
+            for (const d of demos) {
+                await window.fbBridge.upsertPlayerDoc(livePin, d.id, {
+                    id: d.id,
+                    name: d.name,
+                    avatar: d.avatar,
+                    score: 0,
+                    streak: 0,
+                    maxStreak: 0,
+                    correctCount: 0,
+                    lastAnsweredIndex: -1,
+                    joinedAt: Date.now()
+                });
+            }
+            showToast('Đã thêm 2 học sinh mẫu vào sảnh chờ!', '🧪');
+        }
+
         function renderHostQuestionView(room) {
             clearInterval(timerInterval);
             isAnswered = false;
@@ -2797,19 +2843,100 @@
             const players = Object.values(livePlayersMap);
 
             document.getElementById('questionProgressBadge').textContent = `Câu ${currentIndex + 1} / ${activeQuestions.length}`;
-            document.getElementById('originalNumberLabel').textContent = `Phòng #${livePin} • Câu gốc #${q.id}`;
+            document.getElementById('originalNumberLabel').textContent = `Phòng #${livePin} • Câu #${q.id}`;
             document.getElementById('sourceBadge').textContent = `Nguồn: ${q.source}`;
             document.getElementById('timeReasonTag').textContent = q.timeNote;
 
             const counterEl = document.getElementById('hostAnsweredCounter');
             counterEl.classList.remove('hidden');
-            const answeredCount = players.filter(p => p.lastAnsweredIndex === currentIndex).length;
-            counterEl.textContent = `Đã trả lời: ${answeredCount} / ${players.length}`;
-            renderHostLiveStudentCards();
+            counterEl.textContent = `Đã trả lời: 0 / ${players.length}`;
 
             const skipBtn = document.getElementById('skipOrRevealBtn');
             skipBtn.textContent = 'Chốt đáp án ngay ⏭';
-// ... existing code ... -->
+            skipBtn.classList.remove('hidden');
+
+            applyLevelBadge(q);
+
+            const qTextEl = document.getElementById('questionText');
+            qTextEl.innerHTML = q.question;
+            renderMath(qTextEl);
+
+            renderHostLiveStudentCards();
+
+            const area = document.getElementById('answerArea');
+            area.innerHTML = '';
+
+            if (q.type === 'quiz') {
+                const styles = [
+                    { cls: 'btn-red', icon: '▲' },
+                    { cls: 'btn-blue', icon: '◆' },
+                    { cls: 'btn-yellow', icon: '●' },
+                    { cls: 'btn-green', icon: '■' }
+                ];
+                area.innerHTML = `
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                        ${q.options.map((opt, idx) => `
+                            <div class="${styles[idx].cls} text-white rounded-2xl p-4 sm:p-6 flex items-center gap-4 min-h-[76px] sm:min-h-[92px] shadow-md">
+                                <span class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-black/20 flex items-center justify-center font-kahoot font-black text-lg sm:text-xl flex-shrink-0">
+                                    ${styles[idx].icon}
+                                </span>
+                                <span class="font-bold text-base sm:text-xl leading-snug">${opt}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } else if (q.type === 'tf') {
+                area.innerHTML = `
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 max-w-3xl mx-auto w-full">
+                        <div class="btn-blue text-white rounded-2xl p-7 sm:p-9 flex items-center justify-center gap-4 font-kahoot font-black text-2xl sm:text-3xl shadow-md">
+                            <span class="opacity-80">◆</span> <span>ĐÚNG</span>
+                        </div>
+                        <div class="btn-red text-white rounded-2xl p-7 sm:p-9 flex items-center justify-center gap-4 font-kahoot font-black text-2xl sm:text-3xl shadow-md">
+                            <span class="opacity-80">▲</span> <span>SAI</span>
+                        </div>
+                    </div>
+                `;
+            } else if (q.type === 'number') {
+                area.innerHTML = `
+                    <div class="max-w-lg mx-auto w-full bg-white rounded-3xl p-6 shadow-md border border-slate-200 text-center">
+                        <div class="text-3xl mb-2">🔢</div>
+                        <div class="font-kahoot font-extrabold text-lg text-slate-800">Câu hỏi điền đáp án số</div>
+                        <p class="text-sm text-slate-500 mt-1">Học sinh đang nhập đáp án số trên điện thoại...</p>
+                    </div>
+                `;
+            } else if (q.type === 'puzzle') {
+                area.innerHTML = `
+                    <div class="max-w-3xl mx-auto w-full bg-white rounded-3xl p-6 shadow-md border border-slate-200">
+                        <div class="font-kahoot font-extrabold text-base text-slate-800 mb-3 text-center">🧩 Câu hỏi sắp xếp 4 thẻ theo thứ tự (1 → 2 → 3 → 4)</div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            ${q.cards.map((c, idx) => `
+                                <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 font-bold text-slate-800 text-sm sm:text-base">
+                                    • ${c}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderMath(area);
+
+            startTimer(q.timeLimit, () => {
+                hostRevealCurrentQuestion();
+            });
+        }
+
+        async function hostRevealCurrentQuestion() {
+            if (isAnswered) return;
+            isAnswered = true;
+            clearInterval(timerInterval);
+            try {
+                await window.fbBridge.updateRoomDoc(livePin, { phase: 'reveal' });
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
         function showHostRevealModal() {
             isAnswered = true;
             clearInterval(timerInterval);
@@ -2845,10 +2972,8 @@
             document.getElementById('feedbackTitle').textContent = `Kết quả Câu ${currentIndex + 1}`;
             document.getElementById('feedbackPoints').textContent = `${correctPlayers.length} / ${players.length} học sinh trả lời chính xác`;
 
-            // Render Answer Distribution Bar Chart
             renderHostAnswerDistributionChart(q, players);
 
-            // Show Detailed Choice of Each Student + Live Leaderboard
             const lbBox = document.getElementById('liveRoundLeaderboardBox');
             lbBox.classList.remove('hidden');
             document.getElementById('liveStatsSummary').textContent = `${players.length} học sinh`;
@@ -2972,6 +3097,185 @@
                 `;
             }).join('');
         }
+
+        /**
+         * =========================================================================
+         * MULTIPLAYER: PLAYER FLOW (QUÉT QR / NHẬP PIN & THI ĐẤU TRÊN ĐIỆN THOẠI)
+         * =========================================================================
+         */
+        async function joinLiveRoom() {
+            initAudio();
+            sfxClick();
+
+            const pin = document.getElementById('joinPinInput').value.trim();
+            const name = document.getElementById('joinNameInput').value.trim();
+
+            if (!/^\d{6}$/.test(pin)) {
+                showToast('Vui lòng nhập đúng mã PIN gồm 6 chữ số!', '⚠️');
+                document.getElementById('joinPinInput').focus();
+                return;
+            }
+            if (!name) {
+                showToast('Vui lòng nhập tên hiển thị của bạn!', '⚠️');
+                document.getElementById('joinNameInput').focus();
+                return;
+            }
+
+            const btn = document.getElementById('joinRoomBtn');
+            btn.disabled = true;
+            btn.textContent = 'Đang tìm phòng...';
+
+            try {
+                const snap = await window.fbBridge.getRoomDoc(pin);
+                if (!snap || !snap.exists()) {
+                    showToast(`Không tìm thấy phòng #${pin}. Hãy kiểm tra lại mã PIN!`, '❌');
+                    return;
+                }
+
+                const room = snap.data();
+                const qMap = new Map(QUESTIONS_DB.map(q => [q.id, q]));
+                activeQuestions = (room.questionIds || []).map(id => qMap.get(id)).filter(Boolean);
+                if (activeQuestions.length === 0) activeQuestions = [...QUESTIONS_DB];
+
+                gameRole = 'player';
+                livePin = pin;
+                livePlayerId = window.fbBridge.getUid();
+                score = 0;
+                streak = 0;
+                maxStreak = 0;
+                correctCount = 0;
+                reviewHistory = [];
+                lastRenderedPhaseSig = '';
+
+                await window.fbBridge.upsertPlayerDoc(pin, livePlayerId, {
+                    id: livePlayerId,
+                    name,
+                    avatar: selectedAvatar,
+                    score: 0,
+                    streak: 0,
+                    maxStreak: 0,
+                    correctCount: 0,
+                    lastAnsweredIndex: -1,
+                    joinedAt: Date.now()
+                });
+
+                document.getElementById('lobbyScreen').classList.add('hidden');
+                document.getElementById('playerWaitingScreen').classList.remove('hidden');
+                document.getElementById('playerWaitingPin').textContent = pin;
+                document.getElementById('playerWaitingName').textContent = name;
+                document.getElementById('playerWaitingAvatar').textContent = selectedAvatar;
+
+                const roleBadge = document.getElementById('roleHeaderBadge');
+                roleBadge.textContent = `PHÒNG #${pin}`;
+                roleBadge.classList.remove('hidden');
+
+                document.getElementById('headerStats').classList.remove('hidden');
+                updateScoreUI();
+
+                subscribePlayerListeners(pin, livePlayerId);
+                showToast(`Đã vào phòng #${pin} thành công!`, '🎉');
+            } catch (err) {
+                console.error(err);
+                showToast('Lỗi khi tham gia phòng. Vui lòng thử lại!', '❌');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Vào Sảnh Chờ 🚀';
+            }
+        }
+
+        function subscribePlayerListeners(pin, playerId) {
+            cleanupLiveListeners();
+
+            unsubPlayers = window.fbBridge.listenPlayersCol(pin, (snapshot) => {
+                const map = {};
+                snapshot.forEach(d => { map[d.id] = d.data(); });
+                livePlayersMap = map;
+                const count = Object.keys(map).length;
+                const peersEl = document.getElementById('playerWaitingPeersCount');
+                if (peersEl) {
+                    peersEl.textContent = `Hiện có ${count} học sinh trong phòng • Đang chờ bắt đầu...`;
+                }
+            }, () => {});
+
+            unsubRoom = window.fbBridge.listenRoomDoc(pin, (docSnap) => {
+                if (!docSnap.exists()) return;
+                onPlayerRoomUpdated(docSnap.data());
+            }, () => {});
+        }
+
+        function onPlayerRoomUpdated(room) {
+            const sig = `${room.phase}_${room.currentIndex}`;
+            if (sig === lastRenderedPhaseSig) return;
+            lastRenderedPhaseSig = sig;
+
+            if (room.phase === 'question') {
+                currentIndex = room.currentIndex;
+                document.getElementById('playerWaitingScreen').classList.add('hidden');
+                document.getElementById('feedbackOverlay').classList.add('hidden');
+                document.getElementById('resultScreen').classList.add('hidden');
+                document.getElementById('gameScreen').classList.remove('hidden');
+                renderPlayerQuestionView(room);
+            } else if (room.phase === 'reveal') {
+                showPlayerRevealModal();
+            } else if (room.phase === 'finished') {
+                showLiveFinalPodium();
+            }
+        }
+
+        function renderPlayerQuestionView(room) {
+            clearInterval(timerInterval);
+            isAnswered = false;
+            const q = activeQuestions[currentIndex];
+
+            document.getElementById('questionProgressBadge').textContent = `Câu ${currentIndex + 1} / ${activeQuestions.length}`;
+            document.getElementById('originalNumberLabel').textContent = `Phòng #${livePin} • Câu #${q.id}`;
+            document.getElementById('sourceBadge').textContent = `Nguồn: ${q.source}`;
+            document.getElementById('timeReasonTag').textContent = q.timeNote;
+            document.getElementById('hostAnsweredCounter').classList.add('hidden');
+            document.getElementById('hostLiveTrackingPanel').classList.add('hidden');
+            document.getElementById('skipOrRevealBtn').classList.add('hidden');
+
+            applyLevelBadge(q);
+
+            const qTextEl = document.getElementById('questionText');
+            qTextEl.innerHTML = q.question;
+            renderMath(qTextEl);
+
+            renderAnswerControls(q);
+
+            startTimer(q.timeLimit, () => {
+                if (!isAnswered) {
+                    finalizeAnswer(false, '⏰ Hết thời gian', getCorrectAnswerText(q), true, 'Hết giờ');
+                }
+            });
+        }
+
+        function showPlayerRevealModal() {
+            clearInterval(timerInterval);
+            const q = activeQuestions[currentIndex];
+            const players = Object.values(livePlayersMap).sort((a, b) => (b.score || 0) - (a.score || 0));
+            const me = livePlayersMap[livePlayerId] || {};
+            const myRank = Math.max(1, players.findIndex(p => p.id === livePlayerId) + 1);
+            const didAnswerThis = me.lastAnsweredIndex === currentIndex;
+            const isCorrect = didAnswerThis && Boolean(me.lastIsCorrect);
+            const earned = didAnswerThis ? (me.lastEarned || 0) : 0;
+
+            if (!isAnswered) {
+                isAnswered = true;
+                streak = 0;
+                updateScoreUI();
+                reviewHistory.push({
+                    q,
+                    isCorrect: false,
+                    userAnswerText: '⏰ Hết thời gian / Chưa nộp',
+                    correctAnswerText: getCorrectAnswerText(q),
+                    timeSpent: q.timeLimit.toFixed(1),
+                    earnedPoints: 0
+                });
+            }
+
+            if (isCorrect) sfxCorrect(); else sfxWrong();
+
             const overlay = document.getElementById('feedbackOverlay');
             const banner = document.getElementById('feedbackBanner');
 
@@ -2999,7 +3303,400 @@
 
             document.getElementById('correctAnswerDisplay').innerHTML = getCorrectAnswerText(q);
             document.getElementById('explanationDisplay').innerHTML = q.explanation;
-// ... existing code ... -->
+
+            document.getElementById('modalScoreFooter').classList.remove('hidden');
+            document.getElementById('modalTotalScore').textContent = score.toLocaleString('vi-VN');
+            document.getElementById('nextQuestionBtn').classList.add('hidden');
+            document.getElementById('playerWaitNextHint').classList.remove('hidden');
+
+            overlay.classList.remove('hidden');
+            renderMath(overlay);
+        }
+
+        function showLiveFinalPodium() {
+            clearInterval(timerInterval);
+            sfxVictory();
+            if (typeof confetti === 'function') {
+                confetti({ particleCount: 130, spread: 80, origin: { y: 0.6 } });
+            }
+
+            document.getElementById('feedbackOverlay').classList.add('hidden');
+            document.getElementById('gameScreen').classList.add('hidden');
+            document.getElementById('hostLobbyScreen').classList.add('hidden');
+            document.getElementById('playerWaitingScreen').classList.add('hidden');
+            document.getElementById('resultScreen').classList.remove('hidden');
+
+            const sortedPlayers = Object.values(livePlayersMap).sort((a, b) => (b.score || 0) - (a.score || 0));
+            const medals = ['🥇', '🥈', '🥉'];
+
+            // Render Top 3 Podium
+            const podiumEl = document.getElementById('topThreePodium');
+            podiumEl.classList.remove('hidden');
+            const podiumOrder = [1, 0, 2]; // Silver left, Gold center, Bronze right
+            const heights = ['h-28', 'h-36', 'h-24'];
+            const bgColors = ['bg-slate-200 text-slate-800', 'bg-yellow-400 text-slate-950 shadow-lg', 'bg-amber-600 text-white'];
+
+            podiumEl.innerHTML = podiumOrder.map((rankIdx, colIdx) => {
+                const p = sortedPlayers[rankIdx];
+                if (!p) return `<div></div>`;
+                return `
+                    <div class="flex flex-col items-center text-center">
+                        <div class="text-3xl sm:text-4xl mb-1">${p.avatar || '🦊'}</div>
+                        <div class="font-kahoot font-extrabold text-xs sm:text-sm text-slate-900 truncate max-w-[110px] mb-1">${escapeHtml(p.name)}</div>
+                        <div class="w-full ${heights[colIdx]} ${bgColors[colIdx]} rounded-t-2xl flex flex-col items-center justify-center p-2">
+                            <span class="text-2xl">${medals[rankIdx]}</span>
+                            <span class="font-kahoot font-black text-xs sm:text-sm mt-0.5">${(p.score || 0).toLocaleString('vi-VN')}đ</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            if (gameRole === 'host') {
+                const champion = sortedPlayers[0];
+                document.getElementById('resultPlayerName').textContent = champion
+                    ? `Quán quân: ${champion.avatar || '🏆'} ${champion.name}`
+                    : 'Kết thúc trận đấu';
+                document.getElementById('resultSubtitle').textContent = `Phòng #${livePin} • Hoàn thành ${activeQuestions.length} câu hỏi`;
+
+                document.getElementById('finalScore').textContent = champion ? (champion.score || 0).toLocaleString('vi-VN') : '0';
+                document.getElementById('finalAccuracy').textContent = champion ? `${champion.correctCount || 0}/${activeQuestions.length}` : '0/0';
+                document.getElementById('finalMaxStreak').textContent = champion ? `${champion.maxStreak || 0} 🔥` : '0 🔥';
+                document.getElementById('finalRank').textContent = `${sortedPlayers.length} HS`;
+
+                document.getElementById('hostResultReportActions').classList.remove('hidden');
+                document.getElementById('reviewSectionWrapper').classList.add('hidden');
+                document.getElementById('replaySoloBtn').classList.add('hidden');
+            } else {
+                const myName = document.getElementById('joinNameInput').value.trim() || 'Học sinh';
+                const myRank = sortedPlayers.findIndex(p => p.id === livePlayerId) + 1;
+
+                document.getElementById('resultPlayerName').textContent = `${selectedAvatar} ${myName}`;
+                document.getElementById('resultSubtitle').textContent = `Phòng #${livePin} • Hoàn thành chuyên đề Vectơ Toán 10`;
+                document.getElementById('finalScore').textContent = score.toLocaleString('vi-VN');
+                document.getElementById('finalAccuracy').textContent = `${correctCount}/${activeQuestions.length}`;
+                document.getElementById('finalMaxStreak').textContent = `${maxStreak} 🔥`;
+                document.getElementById('finalRank').textContent = myRank > 0 ? `#${myRank}` : '#1';
+
+                document.getElementById('hostResultReportActions').classList.add('hidden');
+                document.getElementById('reviewSectionWrapper').classList.remove('hidden');
+                document.getElementById('replaySoloBtn').classList.add('hidden');
+                filterReview('all');
+            }
+
+            const lbEl = document.getElementById('leaderboardList');
+            lbEl.innerHTML = sortedPlayers.map((p, idx) => {
+                const isMe = gameRole === 'player' && p.id === livePlayerId;
+                const rightNum = p.correctCount || 0;
+                const wrongNum = Math.max(0, activeQuestions.length - rightNum);
+                const accPct = activeQuestions.length > 0 ? Math.round((rightNum / activeQuestions.length) * 100) : 0;
+                return `
+                    <div class="flex items-center justify-between px-4 py-3.5 rounded-2xl border ${isMe || idx === 0 ? 'bg-purple-100 border-purple-400 font-extrabold text-purple-950 shadow-sm' : 'bg-slate-50 border-slate-200 text-slate-700'}">
+                        <div class="flex items-center gap-3">
+                            <span class="text-2xl">${medals[idx] || `#${idx + 1}`}</span>
+                            <span class="text-2xl">${p.avatar || '🦊'}</span>
+                            <div>
+                                <div>${escapeHtml(p.name)} ${isMe ? '(Bạn)' : ''}</div>
+                                <div class="text-xs font-normal text-slate-600">
+                                    ✅ Đúng: <strong class="text-emerald-700">${rightNum}</strong> &nbsp;|&nbsp;
+                                    ❌ Sai/Bỏ: <strong class="text-rose-600">${wrongNum}</strong> &nbsp;|&nbsp;
+                                    🎯 Tỷ lệ: <strong>${accPct}%</strong>
+                                </div>
+                            </div>
+                        </div>
+                        <span class="font-kahoot font-black text-lg">${(p.score || 0).toLocaleString('vi-VN')} đ</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        /**
+         * =========================================================================
+         * SOLO PRACTICE & SHARED GAMEPLAY ENGINE
+         * =========================================================================
+         */
+        function startGame() {
+            initAudio();
+            sfxClick();
+            cleanupLiveListeners();
+            gameRole = 'solo';
+            livePin = null;
+
+            let pool = selectedMode === 'all'
+                ? [...QUESTIONS_DB]
+                : QUESTIONS_DB.filter(q => q.level === selectedMode);
+
+            if (document.getElementById('shuffleQuestionsCheck').checked) {
+                for (let i = pool.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [pool[i], pool[j]] = [pool[j], pool[i]];
+                }
+            }
+
+            activeQuestions = pool;
+            currentIndex = 0;
+            score = 0;
+            streak = 0;
+            maxStreak = 0;
+            correctCount = 0;
+            reviewHistory = [];
+
+            document.getElementById('lobbyScreen').classList.add('hidden');
+            document.getElementById('resultScreen').classList.add('hidden');
+            document.getElementById('gameScreen').classList.remove('hidden');
+            document.getElementById('headerStats').classList.remove('hidden');
+            document.getElementById('roleHeaderBadge').classList.add('hidden');
+            document.getElementById('hostAnsweredCounter').classList.add('hidden');
+            document.getElementById('hostLiveTrackingPanel').classList.add('hidden');
+
+            const skipBtn = document.getElementById('skipOrRevealBtn');
+            skipBtn.textContent = 'Bỏ qua ⏭';
+            skipBtn.classList.remove('hidden');
+
+            updateScoreUI();
+            loadQuestion();
+        }
+
+        function applyLevelBadge(q) {
+            const levelBadge = document.getElementById('levelBadge');
+            levelBadge.textContent = q.levelName;
+            levelBadge.className = 'px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wide ';
+            if (q.level === 'nb') levelBadge.className += 'bg-emerald-100 text-emerald-800';
+            else if (q.level === 'th') levelBadge.className += 'bg-sky-100 text-sky-800';
+            else if (q.level === 'vd') levelBadge.className += 'bg-amber-100 text-amber-800';
+            else levelBadge.className += 'bg-rose-100 text-rose-800';
+
+            const typeMap = {
+                quiz: 'Trắc nghiệm 4 lựa chọn',
+                tf: 'Đúng / Sai',
+                number: 'Điền đáp án số',
+                puzzle: 'Ghép cột / Sắp xếp'
+            };
+            document.getElementById('typeBadge').textContent = typeMap[q.type];
+        }
+
+        function renderAnswerControls(q) {
+            const area = document.getElementById('answerArea');
+            area.innerHTML = '';
+
+            if (q.type === 'quiz') {
+                renderQuizOptions(q);
+            } else if (q.type === 'tf') {
+                renderTrueFalseOptions();
+            } else if (q.type === 'number') {
+                renderNumberInput();
+            } else if (q.type === 'puzzle') {
+                renderPuzzleOptions(q);
+            }
+            renderMath(area);
+        }
+
+        function loadQuestion() {
+            clearInterval(timerInterval);
+            isAnswered = false;
+            const q = activeQuestions[currentIndex];
+
+            document.getElementById('questionProgressBadge').textContent = `Câu ${currentIndex + 1} / ${activeQuestions.length}`;
+            document.getElementById('originalNumberLabel').textContent = `Câu gốc #${q.id}`;
+            document.getElementById('sourceBadge').textContent = `Nguồn: ${q.source}`;
+            document.getElementById('timeReasonTag').textContent = q.timeNote;
+
+            applyLevelBadge(q);
+
+            const qTextEl = document.getElementById('questionText');
+            qTextEl.innerHTML = q.question;
+            renderMath(qTextEl);
+
+            renderAnswerControls(q);
+
+            startTimer(q.timeLimit, () => {
+                if (!isAnswered) {
+                    finalizeAnswer(false, '⏰ Hết thời gian', getCorrectAnswerText(q), true, 'Hết giờ');
+                }
+            });
+        }
+
+        function renderQuizOptions(q) {
+            const area = document.getElementById('answerArea');
+            const styles = [
+                { cls: 'btn-red', icon: '▲', label: 'A' },
+                { cls: 'btn-blue', icon: '◆', label: 'B' },
+                { cls: 'btn-yellow', icon: '●', label: 'C' },
+                { cls: 'btn-green', icon: '■', label: 'D' }
+            ];
+
+            const grid = document.createElement('div');
+            grid.className = 'grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4';
+
+            q.options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = `option-btn kahoot-btn ${styles[idx].cls} text-white rounded-2xl p-4 sm:p-6 text-left flex items-center gap-4 min-h-[76px] sm:min-h-[96px] focus:outline-none`;
+                btn.innerHTML = `
+                    <span class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-black/20 flex items-center justify-center font-kahoot font-black text-lg sm:text-xl flex-shrink-0">
+                        ${styles[idx].icon}
+                    </span>
+                    <span class="font-bold text-base sm:text-xl leading-snug">${opt}</span>
+                `;
+                btn.onclick = () => submitQuiz(idx);
+                grid.appendChild(btn);
+            });
+
+            area.appendChild(grid);
+        }
+
+        function renderTrueFalseOptions() {
+            const area = document.getElementById('answerArea');
+            const grid = document.createElement('div');
+            grid.className = 'grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 max-w-3xl mx-auto w-full';
+
+            const choices = [
+                { label: 'ĐÚNG', val: true, cls: 'btn-blue', icon: '◆' },
+                { label: 'SAI', val: false, cls: 'btn-red', icon: '▲' }
+            ];
+
+            choices.forEach(c => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = `kahoot-btn ${c.cls} text-white rounded-2xl p-7 sm:p-10 flex items-center justify-center gap-4 font-kahoot font-black text-2xl sm:text-3xl tracking-wide`;
+                btn.innerHTML = `<span class="text-3xl sm:text-4xl opacity-80">${c.icon}</span> <span>${c.label}</span>`;
+                btn.onclick = () => submitTrueFalse(c.val);
+                grid.appendChild(btn);
+            });
+
+            area.appendChild(grid);
+        }
+
+        function renderNumberInput() {
+            const area = document.getElementById('answerArea');
+            const wrapper = document.createElement('div');
+            wrapper.className = 'max-w-lg mx-auto w-full bg-white rounded-3xl p-6 sm:p-8 shadow-md border border-slate-200 text-center';
+            wrapper.innerHTML = `
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
+                    Nhập đáp án số của bạn (VD: 5, -4, 150...)
+                </label>
+                <input id="numericAnswerInput" type="text" inputmode="decimal" autocomplete="off" placeholder="Nhập số..."
+                    class="w-full px-5 py-4 rounded-2xl border-2 border-slate-300 focus:border-[#46178f] focus:outline-none text-center font-kahoot font-black text-3xl text-slate-900 mb-4">
+                <button type="button" onclick="submitNumber()" class="w-full kahoot-btn btn-purple text-white font-kahoot font-extrabold text-lg py-4 rounded-2xl uppercase tracking-wide">
+                    Gửi đáp án ✓
+                </button>
+            `;
+            area.appendChild(wrapper);
+
+            const inputEl = document.getElementById('numericAnswerInput');
+            setTimeout(() => inputEl && inputEl.focus(), 50);
+            inputEl.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') submitNumber();
+            });
+        }
+
+        function renderPuzzleOptions(q) {
+            const area = document.getElementById('answerArea');
+            puzzleCurrentOrder = [0, 1, 2, 3];
+            do {
+                for (let i = puzzleCurrentOrder.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [puzzleCurrentOrder[i], puzzleCurrentOrder[j]] = [puzzleCurrentOrder[j], puzzleCurrentOrder[i]];
+                }
+            } while (puzzleCurrentOrder.every((val, idx) => val === idx));
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'max-w-3xl mx-auto w-full space-y-3';
+
+            const hint = document.createElement('div');
+            hint.className = 'text-center text-xs sm:text-sm font-semibold text-slate-600 mb-1';
+            hint.textContent = 'Dùng nút mũi tên ▲ / ▼ để đưa từng thẻ về đúng vị trí thứ tự (1 → 2 → 3 → 4):';
+            wrapper.appendChild(hint);
+
+            const listContainer = document.createElement('div');
+            listContainer.id = 'puzzleListContainer';
+            listContainer.className = 'space-y-2.5';
+            wrapper.appendChild(listContainer);
+
+            const submitBtn = document.createElement('button');
+            submitBtn.type = 'button';
+            submitBtn.className = 'w-full kahoot-btn btn-green text-white font-kahoot font-extrabold text-lg py-4 rounded-2xl uppercase tracking-wide mt-3';
+            submitBtn.textContent = 'Xác nhận thứ tự ✓';
+            submitBtn.onclick = submitPuzzle;
+            wrapper.appendChild(submitBtn);
+
+            area.appendChild(wrapper);
+            drawPuzzleCards(q);
+        }
+
+        function drawPuzzleCards(q) {
+            const listContainer = document.getElementById('puzzleListContainer');
+            if (!listContainer) return;
+
+            const colors = ['border-l-[#e21b3c]', 'border-l-[#1368ce]', 'border-l-[#d89e00]', 'border-l-[#26890c]'];
+            listContainer.innerHTML = puzzleCurrentOrder.map((cardOrigIdx, posIdx) => `
+                <div class="bg-white rounded-2xl p-3.5 sm:p-4 shadow-sm border border-slate-200 border-l-8 ${colors[posIdx]} flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <span class="w-8 h-8 rounded-lg bg-slate-900 text-white font-kahoot font-black text-sm flex items-center justify-center flex-shrink-0">
+                            ${posIdx + 1}
+                        </span>
+                        <div class="font-bold text-slate-800 text-base sm:text-lg truncate">
+                            ${q.cards[cardOrigIdx]}
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1.5 flex-shrink-0">
+                        <button type="button" onclick="movePuzzleCard(${posIdx}, -1)" ${posIdx === 0 ? 'disabled' : ''}
+                            class="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-30 font-black text-slate-700 transition">
+                            ▲
+                        </button>
+                        <button type="button" onclick="movePuzzleCard(${posIdx}, 1)" ${posIdx === 3 ? 'disabled' : ''}
+                            class="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-30 font-black text-slate-700 transition">
+                            ▼
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+
+            renderMath(listContainer);
+        }
+
+        function movePuzzleCard(pos, delta) {
+            if (isAnswered) return;
+            const target = pos + delta;
+            if (target < 0 || target > 3) return;
+            sfxClick();
+            [puzzleCurrentOrder[pos], puzzleCurrentOrder[target]] = [puzzleCurrentOrder[target], puzzleCurrentOrder[pos]];
+            drawPuzzleCards(activeQuestions[currentIndex]);
+        }
+
+        function startTimer(seconds, onExpireCallback) {
+            timeLeft = seconds;
+            questionStartTime = Date.now();
+            const circle = document.getElementById('timerCircle');
+            const bar = document.getElementById('timeProgressBar');
+
+            circle.textContent = timeLeft;
+            circle.classList.remove('timer-urgent');
+            bar.style.width = '100%';
+            bar.style.backgroundColor = '#46178f';
+
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                if (timeLeft < 0) timeLeft = 0;
+                circle.textContent = timeLeft;
+
+                const pct = (timeLeft / seconds) * 100;
+                bar.style.width = `${pct}%`;
+
+                if (timeLeft <= 5 && timeLeft > 0) {
+                    circle.classList.add('timer-urgent');
+                    bar.style.backgroundColor = '#e21b3c';
+                    sfxTick(true);
+                } else if (timeLeft > 5) {
+                    sfxTick(false);
+                }
+
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    if (typeof onExpireCallback === 'function') onExpireCallback();
+                }
+            }, 1000);
+        }
+
         function submitQuiz(chosenIdx) {
             if (isAnswered) return;
             const q = activeQuestions[currentIndex];
@@ -3059,7 +3756,28 @@
             const shortOrder = puzzleCurrentOrder.map(idx => idx + 1).join('-');
             finalizeAnswer(isCorrect, userSummary, correctSummary, false, shortOrder);
         }
-// ... existing code ... -->
+
+        function skipToAnswer() {
+            if (isAnswered) return;
+            if (gameRole === 'host') {
+                hostRevealCurrentQuestion();
+                return;
+            }
+            const q = activeQuestions[currentIndex];
+            finalizeAnswer(false, '⏭ Bỏ qua câu hỏi', getCorrectAnswerText(q), false, 'Bỏ qua');
+        }
+
+        function getCorrectAnswerText(q) {
+            if (q.type === 'quiz') {
+                const labels = ['A', 'B', 'C', 'D'];
+                return `${labels[q.correctIndex]}. ${q.options[q.correctIndex]}`;
+            }
+            if (q.type === 'tf') return q.correctBool ? 'ĐÚNG' : 'SAI';
+            if (q.type === 'number') return q.correctAnswers[0];
+            if (q.type === 'puzzle') return q.cards.map((c, i) => `(${i + 1}) ${c}`).join(' → ');
+            return '';
+        }
+
         async function finalizeAnswer(isCorrect, userAnswerText, correctAnswerText, isTimeout = false, shortChoiceLabel = '') {
             isAnswered = true;
             clearInterval(timerInterval);
@@ -3074,7 +3792,6 @@
                 streak++;
                 if (streak > maxStreak) maxStreak = streak;
 
-                // Kahoot-style speed + streak bonus
                 const timeRatio = Math.max(0, (q.timeLimit - elapsedSec) / q.timeLimit);
                 const basePoints = Math.round(600 + 400 * timeRatio);
                 const streakBonus = Math.min(300, (streak - 1) * 50);
@@ -3086,7 +3803,6 @@
 
             updateScoreUI();
 
-            // Record history
             reviewHistory.push({
                 q,
                 isCorrect,
@@ -3096,12 +3812,12 @@
                 earnedPoints
             });
 
-            // If Player in Live Room: sync answer to Firestore/MQTT and show waiting lock screen on phone
+            // If Player in Live Room: sync answer and lock phone screen until Host reveals
             if (gameRole === 'player') {
                 sfxClick();
                 const answerArea = document.getElementById('answerArea');
                 answerArea.innerHTML = `
-                    <div class="max-w-md w-full mx-auto bg-[#46178f] text-white rounded-3xl p-8 text-center shadow-xl space-y-3 animate-fadeIn">
+                    <div class="max-w-md w-full mx-auto bg-[#46178f] text-white rounded-3xl p-8 text-center shadow-xl space-y-3">
                         <div class="text-5xl animate-bounce">🔒</div>
                         <h3 class="font-kahoot font-black text-2xl">Đã gửi đáp án!</h3>
                         <p class="text-purple-200 text-sm">Đang chờ các bạn khác hoàn thành câu hỏi này...</p>
@@ -3139,70 +3855,91 @@
                 }
                 return;
             }
-// ... existing code ... -->
+
+            // Solo Mode Feedback Modal
+            const overlay = document.getElementById('feedbackOverlay');
+            const banner = document.getElementById('feedbackBanner');
+            const iconEl = document.getElementById('feedbackIcon');
+            const titleEl = document.getElementById('feedbackTitle');
+            const pointsEl = document.getElementById('feedbackPoints');
+
+            if (isCorrect) {
+                sfxCorrect();
+                banner.className = 'p-5 sm:p-6 text-center text-white bg-[#26890c]';
+                iconEl.textContent = streak >= 3 ? '🔥🎉' : '✅';
+                titleEl.textContent = streak >= 3 ? `Tuyệt vời! Chuỗi ${streak} câu đúng!` : 'Chính xác!';
+                pointsEl.textContent = `+${earnedPoints.toLocaleString('vi-VN')} điểm (Làm trong ${roundedSec.toFixed(1)}s / ${q.timeLimit}s)`;
+            } else {
+                sfxWrong();
+                banner.className = 'p-5 sm:p-6 text-center text-white bg-[#e21b3c]';
+                iconEl.textContent = isTimeout ? '⏰' : '❌';
+                titleEl.textContent = isTimeout ? 'Hết thời gian!' : 'Chưa chính xác!';
+                pointsEl.textContent = '0 điểm • Xem lời giải bên dưới để rút kinh nghiệm nhé';
+            }
+
             document.getElementById('hostAnswerChartBox').classList.add('hidden');
             document.getElementById('liveRoundLeaderboardBox').classList.add('hidden');
             document.getElementById('playerChosenAnswerBox').classList.add('hidden');
             document.getElementById('correctAnswerDisplay').innerHTML = correctAnswerText;
-// ... existing code ... -->
-            if (gameRole === 'host') {
-                const champion = sortedPlayers[0];
-                document.getElementById('resultPlayerName').textContent = champion
-                    ? `Quán quân: ${champion.avatar || '🏆'} ${champion.name}`
-                    : 'Kết thúc trận đấu';
-                document.getElementById('resultSubtitle').textContent = `Phòng #${livePin} • Hoàn thành ${activeQuestions.length} câu hỏi`;
+            document.getElementById('explanationDisplay').innerHTML = q.explanation;
 
-                document.getElementById('finalScore').textContent = champion ? (champion.score || 0).toLocaleString('vi-VN') : '0';
-                document.getElementById('finalAccuracy').textContent = champion ? `${champion.correctCount || 0}/${activeQuestions.length}` : '0/0';
-                document.getElementById('finalMaxStreak').textContent = champion ? `${champion.maxStreak || 0} 🔥` : '0 🔥';
-                document.getElementById('finalRank').textContent = `${sortedPlayers.length} HS`;
+            document.getElementById('modalScoreFooter').classList.remove('hidden');
+            document.getElementById('modalTotalScore').textContent = score.toLocaleString('vi-VN');
+            document.getElementById('playerWaitNextHint').classList.add('hidden');
 
-                document.getElementById('hostResultReportActions').classList.remove('hidden');
-                document.getElementById('reviewSectionWrapper').classList.add('hidden');
-                document.getElementById('replaySoloBtn').classList.add('hidden');
-            } else {
-                const myName = document.getElementById('joinNameInput').value.trim() || 'Học sinh';
-                const myRank = sortedPlayers.findIndex(p => p.id === livePlayerId) + 1;
+            const nextBtn = document.getElementById('nextQuestionBtn');
+            nextBtn.classList.remove('hidden');
+            nextBtn.textContent = currentIndex === activeQuestions.length - 1 ? 'Xem bảng xếp hạng 🏆' : 'Câu tiếp theo ➔';
 
-                document.getElementById('resultPlayerName').textContent = `${selectedAvatar} ${myName}`;
-                document.getElementById('resultSubtitle').textContent = `Phòng #${livePin} • Hoàn thành chuyên đề Vectơ Toán 10`;
-                document.getElementById('finalScore').textContent = score.toLocaleString('vi-VN');
-                document.getElementById('finalAccuracy').textContent = `${correctCount}/${activeQuestions.length}`;
-                document.getElementById('finalMaxStreak').textContent = `${maxStreak} 🔥`;
-                document.getElementById('finalRank').textContent = myRank > 0 ? `#${myRank}` : '#1';
-
-                document.getElementById('hostResultReportActions').classList.add('hidden');
-                document.getElementById('reviewSectionWrapper').classList.remove('hidden');
-                document.getElementById('replaySoloBtn').classList.add('hidden');
-                filterReview('all');
-            }
-
-            const lbEl = document.getElementById('leaderboardList');
-            lbEl.innerHTML = sortedPlayers.map((p, idx) => {
-                const isMe = gameRole === 'player' && p.id === livePlayerId;
-                const rightNum = p.correctCount || 0;
-                const wrongNum = Math.max(0, activeQuestions.length - rightNum);
-                const accPct = activeQuestions.length > 0 ? Math.round((rightNum / activeQuestions.length) * 100) : 0;
-                return `
-                    <div class="flex items-center justify-between px-4 py-3.5 rounded-2xl border ${isMe || idx === 0 ? 'bg-purple-100 border-purple-400 font-extrabold text-purple-950 shadow-sm' : 'bg-slate-50 border-slate-200 text-slate-700'}">
-                        <div class="flex items-center gap-3">
-                            <span class="text-2xl">${medals[idx] || `#${idx + 1}`}</span>
-                            <span class="text-2xl">${p.avatar || '🦊'}</span>
-                            <div>
-                                <div>${escapeHtml(p.name)} ${isMe ? '(Bạn)' : ''}</div>
-                                <div class="text-xs font-normal text-slate-600">
-                                    ✅ Đúng: <strong class="text-emerald-700">${rightNum}</strong> &nbsp;|&nbsp;
-                                    ❌ Sai/Bỏ: <strong class="text-rose-600">${wrongNum}</strong> &nbsp;|&nbsp;
-                                    🎯 Tỷ lệ: <strong>${accPct}%</strong>
-                                </div>
-                            </div>
-                        </div>
-                        <span class="font-kahoot font-black text-lg">${(p.score || 0).toLocaleString('vi-VN')} đ</span>
-                    </div>
-                `;
-            }).join('');
+            overlay.classList.remove('hidden');
+            renderMath(overlay);
         }
 
+        function updateScoreUI() {
+            document.getElementById('headerScore').textContent = score.toLocaleString('vi-VN');
+            const streakBadge = document.getElementById('streakBadge');
+            if (streak >= 2) {
+                streakBadge.classList.remove('hidden');
+                streakBadge.classList.add('flex');
+                document.getElementById('streakCount').textContent = streak;
+            } else {
+                streakBadge.classList.add('hidden');
+                streakBadge.classList.remove('flex');
+            }
+        }
+
+        async function nextQuestion() {
+            sfxClick();
+            if (gameRole === 'host') {
+                const nextIdx = currentIndex + 1;
+                if (nextIdx < activeQuestions.length) {
+                    await window.fbBridge.updateRoomDoc(livePin, {
+                        phase: 'question',
+                        currentIndex: nextIdx,
+                        questionStartedAt: Date.now()
+                    });
+                } else {
+                    await window.fbBridge.updateRoomDoc(livePin, {
+                        phase: 'finished'
+                    });
+                }
+                return;
+            }
+
+            document.getElementById('feedbackOverlay').classList.add('hidden');
+            currentIndex++;
+            if (currentIndex < activeQuestions.length) {
+                loadQuestion();
+            } else {
+                showFinalResults();
+            }
+        }
+
+        /**
+         * =========================================================================
+         * HOST POST-GAME FULL MATRIX MODAL & CSV REPORT EXPORT
+         * =========================================================================
+         */
         function getPlayerRoundRecord(p, qIdx) {
             if (p.answersHistory && p.answersHistory[qIdx]) {
                 return p.answersHistory[qIdx];
@@ -3227,7 +3964,6 @@
             const players = Object.values(livePlayersMap).sort((a, b) => (b.score || 0) - (a.score || 0));
             const totalQ = activeQuestions.length;
 
-            // 1. Render per-student summary cards
             const summaryEl = document.getElementById('matrixStudentSummaryCards');
             summaryEl.innerHTML = players.map((p, idx) => {
                 let rightCnt = 0;
@@ -3258,7 +3994,6 @@
                 `;
             }).join('');
 
-            // 2. Render Table Header
             const thead = document.getElementById('matrixTableHead');
             thead.innerHTML = `
                 <tr>
@@ -3276,7 +4011,6 @@
                 </tr>
             `;
 
-            // 3. Render Table Body
             const tbody = document.getElementById('matrixTableBody');
             tbody.innerHTML = activeQuestions.map((q, qIdx) => {
                 const correctTxt = getCorrectAnswerText(q);
@@ -3340,7 +4074,6 @@
             const totalQ = activeQuestions.length;
             const rows = [];
 
-            // Section 1: Student Summary
             rows.push(['BÁO CÁO KẾT QUẢ CHUYÊN ĐỀ VECTƠ TOÁN 10', `Phòng #${livePin || 'SOLO'}`, `Tổng số câu: ${totalQ}`]);
             rows.push([]);
             rows.push(['TỔNG KẾT THEO HỌC SINH']);
@@ -3364,7 +4097,6 @@
                 ]);
             });
 
-            // Section 2: Detailed Cross-Comparison Matrix
             rows.push([]);
             rows.push(['CHI TIẾT LỰA CHỌN TỪNG CÂU HỎI']);
             const detailHeader = ['STT Câu', 'Mã câu gốc', 'Mức độ', 'Nội dung câu hỏi', 'Đáp án đúng'];
@@ -3432,7 +4164,6 @@
             document.getElementById('finalAccuracy').textContent = `${correctCount}/${activeQuestions.length}`;
             document.getElementById('finalMaxStreak').textContent = `${maxStreak} 🔥`;
 
-            // Simulated classroom competitors scaled to activeQuestions.length
             const scale = activeQuestions.length / 50;
             const bots = [
                 { name: 'Minh Anh (10A1)', score: Math.round(44200 * scale) },
@@ -3523,13 +4254,21 @@
             document.getElementById('gameScreen').classList.add('hidden');
             document.getElementById('hostLobbyScreen').classList.add('hidden');
             document.getElementById('playerWaitingScreen').classList.add('hidden');
-            document.getElementById('resultScreen').classList.remove('hidden');
+            document.getElementById('resultScreen').classList.add('hidden');
             document.getElementById('feedbackOverlay').classList.add('hidden');
             document.getElementById('fullMatrixModal').classList.add('hidden');
             document.getElementById('hostLiveTrackingPanel').classList.add('hidden');
             document.getElementById('headerStats').classList.add('hidden');
             document.getElementById('roleHeaderBadge').classList.add('hidden');
             document.getElementById('lobbyScreen').classList.remove('hidden');
+        }
+
+        function escapeHtml(str) {
+            return String(str || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
         }
     </script>
 </body>
